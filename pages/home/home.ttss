@@ -1,0 +1,29 @@
+.home { overflow: hidden; }
+.masthead { display:flex; justify-content:space-between; align-items:center; border-bottom:2rpx solid #29251f; padding-bottom:18rpx; }
+.museum-mark { width:64rpx; height:64rpx; border-radius:50%; background:#211f1b; color:#fff; display:flex; align-items:center; justify-content:center; font-family:serif; font-weight:700; }
+.issue { font-size:18rpx; letter-spacing:3rpx; color:#756c60; }
+.hero { padding:56rpx 0 24rpx; }
+.title { margin-top:14rpx; font-size:68rpx; }
+.accent { color:#d95d39; position:relative; }
+.hero-copy { width:90%; margin:26rpx 0 38rpx; font-size:28rpx; color:#655f55; line-height:1.75; }
+.capture { margin:0; }
+.camera { margin-right:14rpx; font-size:38rpx; }
+.microcopy { text-align:center; font-size:20rpx; margin-top:14rpx; color:#898075; }
+.section-head { display:flex; align-items:baseline; justify-content:space-between; }
+.caption { color:#928779; font-size:20rpx; }
+.case-strip { width:calc(100% + 28rpx); margin-right:-28rpx; }
+.case-row { display:flex; gap:20rpx; width:max-content; padding:4rpx 28rpx 20rpx 2rpx; }
+.case-card { width:520rpx; overflow:hidden; }
+.case-image { width:100%; height:350rpx; background:#ddd4c6; }
+.case-body { padding:24rpx; }
+.case-meta { display:flex; justify-content:space-between; color:#a05238; font-size:20rpx; }
+.case-name { font-family:serif; font-size:32rpx; font-weight:700; line-height:1.4; margin:18rpx 0; }
+.fingerprint { display:flex; gap:12rpx; }
+.fingerprint text { background:#f1eadf; padding:7rpx 12rpx; border-radius:8rpx; color:#635b50; font-size:20rpx; }
+.hall-grid { display:grid; grid-template-columns:1fr 1fr; gap:16rpx; }
+.hall { padding:26rpx 22rpx; min-height:150rpx; }
+.hall-icon { font-size:38rpx; color:#d95d39; }
+.hall-name { font-weight:800; margin:12rpx 0 8rpx; }
+.hall-desc { font-size:21rpx; color:#8a8074; }
+.manifesto { margin-top:48rpx; background:#23211d; color:#fff9ef; padding:42rpx 34rpx; font-family:serif; font-weight:700; font-size:38rpx; line-height:1.55; border-radius:4rpx 44rpx 4rpx 4rpx; }
+.manifesto-index { font-family:sans-serif; font-size:18rpx; color:#d77659; letter-spacing:3rpx; margin-bottom:20rpx; }

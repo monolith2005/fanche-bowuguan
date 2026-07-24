@@ -1,0 +1,13 @@
+<view class="page action-page">
+  <view class="eyebrow">DISPOSITION</view><view class="title small">这次，怎么处理？</view>
+  <view class="principle">不是所有失败都要强行救回原样。根据可逆性、风险与成本，选择一条诚实的路线。</view>
+  <view class="route card {{selected === item.key ? 'selected' : ''}}" tt:for="{{routeList}}" tt:key="key" data-key="{{item.key}}" bindtap="selectRoute">
+    <view class="route-icon">{{item.icon}}</view>
+    <view class="route-main"><view class="route-title">{{item.name}} <text tt:if="{{item.recommended}}">AI 建议</text></view><view class="route-desc">{{item.desc}}</view><view class="route-summary">{{item.summary}}</view></view>
+    <view class="radio">{{selected === item.key ? '●' : '○'}}</view>
+  </view>
+  <view class="selected-detail card" tt:for="{{routeList}}" tt:key="key" tt:if="{{selected === item.key}}">
+    <view class="eyebrow">{{item.name}}路线预览</view><view class="step" tt:for="{{item.steps}}" tt:for-item="step" tt:key="*this"><text>{{index + 1}}</text><view>{{step}}</view></view>
+  </view>
+  <button class="primary-btn" bindtap="startCoach">进入分步陪练</button>
+</view>

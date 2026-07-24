@@ -1,0 +1,18 @@
+.progress { display:flex; justify-content:space-between; font-size:20rpx; color:#a59a8b; border-bottom:2rpx solid #d8cdbd; padding-bottom:18rpx; margin-bottom:42rpx; }
+.progress .active { color:#d95d39; font-weight:700; }
+.small { font-size:52rpx; margin:12rpx 0 30rpx; }
+.upload { height:480rpx; overflow:hidden; position:relative; margin-bottom:22rpx; }
+.preview { width:100%; height:100%; }
+.empty-upload { height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:12rpx; color:#5f584e; }
+.empty-upload text { font-size:20rpx; color:#a1988b; }
+.plus { width:92rpx; height:92rpx; border:2rpx dashed #d95d39; color:#d95d39; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:50rpx; }
+.change, .builtin { position:absolute; bottom:18rpx; padding:10rpx 18rpx; border-radius:99rpx; font-size:20rpx; }
+.change { right:18rpx; background:rgba(24,22,19,.8); color:#fff; }
+.builtin { left:18rpx; background:#f4e1c1; color:#754529; }
+.form-card { padding:8rpx 26rpx; margin-bottom:22rpx; }
+.field { padding:24rpx 0; border-bottom:2rpx solid #eee5d8; }
+.field.last { border-bottom:0; }
+.label { font-weight:700; margin-bottom:14rpx; }
+textarea, input { width:100%; font-size:26rpx; color:#292620; }
+textarea { height:110rpx; }
+.truth-note { color:#7d604f; font-size:22rpx; line-height:1.6; margin:12rpx 6rpx 22rpx; }

@@ -1,0 +1,21 @@
+{
+  "appid": "testAppId",
+  "projectname": "翻车博物馆",
+  "douyinProjectType": "native",
+  "packOptions": {
+    "ignore": [
+      { "type": "file", "value": "蛋糕.png" },
+      { "type": "file", "value": "眼线.png" },
+      { "type": "file", "value": "小屋.png" },
+      { "type": "folder", "value": "docs" }
+    ]
+  },
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "postcss": true,
+    "minified": true,
+    "newFeature": true,
+    "autoCompile": true
+  }
+}

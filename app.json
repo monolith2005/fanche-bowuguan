@@ -1,0 +1,31 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/intake/intake",
+    "pages/diagnosis/diagnosis",
+    "pages/action/action",
+    "pages/coach/coach",
+    "pages/collection/collection"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#F3EBDD",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "翻车博物馆",
+    "backgroundColor": "#F3EBDD",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#817A6F",
+    "selectedColor": "#D95D39",
+    "backgroundColor": "#FFFDF8",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/home/home", "text": "大厅" },
+      { "pagePath": "pages/collection/collection", "text": "我的馆藏" }
+    ]
+  },
+  "networkTimeout": {
+    "request": 20000,
+    "uploadFile": 60000
+  }
+}

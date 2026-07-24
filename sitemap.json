@@ -1,0 +1,4 @@
+{
+  "desc": "翻车博物馆页面索引",
+  "rules": [{ "action": "allow", "page": "*" }]
+}

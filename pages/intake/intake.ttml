@@ -1,0 +1,17 @@
+<view class="page intake">
+  <view class="progress"><text class="active">1 入馆</text><text>2 鉴定</text><text>3 处置</text><text>4 归档</text></view>
+  <view class="eyebrow">NEW EXHIBIT</view><view class="title small">提交翻车现场</view>
+  <view class="upload card" bindtap="chooseImage">
+    <image tt:if="{{imagePath}}" class="preview" src="{{imagePath}}" mode="aspectFill" />
+    <view tt:else class="empty-upload"><view class="plus">＋</view><view>拍照或从相册选择</view><text>支持 JPG / PNG</text></view>
+    <view tt:if="{{imagePath}}" class="change">更换图片</view>
+    <view tt:if="{{builtin}}" class="builtin">基础馆藏案例</view>
+  </view>
+  <view class="form-card card">
+    <view class="field"><view class="label">发生了什么？</view><textarea maxlength="300" placeholder="例如：跟着教程做到第三步，奶油突然变成颗粒了" value="{{description}}" bindinput="onDescription" /></view>
+    <view class="field"><view class="label">你原本想做成什么？</view><input placeholder="目标结果（建议填写）" value="{{target}}" bindinput="onTarget" /></view>
+    <view class="field last"><view class="label">现实约束</view><input placeholder="时间、材料、是否愿意重做…" value="{{constraints}}" bindinput="onConstraints" /></view>
+  </view>
+  <view class="truth-note" tt:if="{{!serviceReady}}">当前为离线基础案例模式。自选图片会保留为待分析状态，不会生成虚构结论。</view>
+  <button class="primary-btn" loading="{{loading}}" disabled="{{loading}}" bindtap="analyze">{{loading ? '正在送往鉴定室…' : '送往 AI 鉴定室'}}</button>
+</view>

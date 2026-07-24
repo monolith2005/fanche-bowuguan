@@ -1,0 +1,19 @@
+page {
+  background: #f3ebdd;
+  color: #211f1b;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  font-size: 28rpx;
+}
+
+.page { min-height: 100vh; padding: 28rpx 28rpx 64rpx; box-sizing: border-box; }
+.card { background: #fffdf8; border: 2rpx solid rgba(48,42,34,.08); border-radius: 28rpx; box-shadow: 0 12rpx 32rpx rgba(64,49,32,.07); }
+.eyebrow { color: #d95d39; font-size: 22rpx; font-weight: 700; letter-spacing: 4rpx; }
+.title { font-family: serif; font-size: 52rpx; line-height: 1.15; font-weight: 800; }
+.muted { color: #777065; }
+.primary-btn { height: 96rpx; border-radius: 48rpx; background: #d95d39; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 30rpx; border: 0; }
+.primary-btn::after, .ghost-btn::after { border: none; }
+.ghost-btn { height: 82rpx; border-radius: 41rpx; background: #f4eee4; color: #2a2721; display: flex; align-items: center; justify-content: center; font-size: 28rpx; border: 0; }
+.section-title { font-size: 34rpx; font-weight: 800; margin: 46rpx 0 22rpx; }
+.tag { display: inline-flex; padding: 8rpx 16rpx; border-radius: 99rpx; background: #f2e8d8; color: #6e5c45; font-size: 22rpx; }
+.warning { color: #a74228; background: #fff0e8; padding: 20rpx; border-radius: 18rpx; font-size: 24rpx; line-height: 1.55; }
+.safe-bottom { height: env(safe-area-inset-bottom); }

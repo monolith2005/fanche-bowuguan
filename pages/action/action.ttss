@@ -1,0 +1,13 @@
+.small { font-size:52rpx; margin:12rpx 0 20rpx; }
+.principle { color:#6f675c; line-height:1.7; margin-bottom:30rpx; }
+.route { display:grid; grid-template-columns:74rpx 1fr 34rpx; gap:16rpx; padding:26rpx; margin-bottom:16rpx; transition:.2s; }
+.route.selected { border:3rpx solid #d95d39; transform:translateY(-2rpx); }
+.route-icon { width:64rpx; height:64rpx; display:flex; align-items:center; justify-content:center; border-radius:18rpx; background:#f1e7d7; color:#d95d39; font-size:34rpx; }
+.route-title { font-size:32rpx; font-weight:800; }
+.route-title text { color:#fff; background:#d95d39; font-size:18rpx; padding:5rpx 10rpx; border-radius:99rpx; margin-left:8rpx; vertical-align:middle; }
+.route-desc { color:#8d8376; font-size:21rpx; margin:6rpx 0 13rpx; }
+.route-summary { line-height:1.5; }
+.radio { color:#d95d39; font-size:30rpx; padding-top:8rpx; }
+.selected-detail { padding:28rpx; margin:32rpx 0 24rpx; }
+.step { display:grid; grid-template-columns:48rpx 1fr; gap:16rpx; align-items:start; margin-top:22rpx; line-height:1.55; }
+.step>text { width:42rpx; height:42rpx; border-radius:50%; background:#28251f; color:white; display:flex; align-items:center; justify-content:center; font-size:20rpx; }

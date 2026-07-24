@@ -1,0 +1,35 @@
+<view class="page home">
+  <view class="masthead">
+    <view class="museum-mark">FM</view>
+    <view class="issue">VISUAL SEARCH · 001</view>
+  </view>
+  <view class="hero">
+    <view class="eyebrow">FAILURE MUSEUM</view>
+    <view class="title">今天又有什么<text class="accent">翻了</text>？</view>
+    <view class="hero-copy">拍下现场，找到和你失败得最像的人。判断为什么翻、还能不能救。</view>
+    <button class="primary-btn capture" bindtap="startIntake"><text class="camera">◎</text> 拍下翻车现场</button>
+    <view class="microcopy">支持拍照 · 相册 · 语音描述（后端接入后）</view>
+  </view>
+
+  <view class="section-head"><view class="section-title">三件基础馆藏</view><view class="caption">使用你提供的真实图片</view></view>
+  <scroll-view scroll-x class="case-strip" enhanced show-scrollbar="false">
+    <view class="case-row">
+      <view class="case-card card" tt:for="{{cases}}" tt:key="id" data-id="{{item.id}}" bindtap="openCase">
+        <image class="case-image" src="{{item.image}}" mode="aspectFill" />
+        <view class="case-body">
+          <view class="case-meta"><text>{{item.hall}}</text><text>内置案例</text></view>
+          <view class="case-name">{{item.name}}</view>
+          <view class="fingerprint"><text>{{item.severity}}</text><text>可逆性 {{item.reversible}}</text></view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="section-title">六座主题展馆</view>
+  <view class="hall-grid">
+    <view class="hall card" tt:for="{{halls}}" tt:key="name" bindtap="showRoadmap">
+      <view class="hall-icon">{{item.icon}}</view><view class="hall-name">{{item.name}}</view><view class="hall-desc">{{item.desc}}</view>
+    </view>
+  </view>
+  <view class="manifesto"><view class="manifesto-index">01—04</view><view>失败不是终点，<br/>只是换了一条参观路线。</view></view>
+</view>

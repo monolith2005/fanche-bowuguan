@@ -1,0 +1,43 @@
+<view class="page diagnosis">
+  <block tt:if="{{pending}}">
+    <view class="pending-card card"><image src="{{imagePath}}" mode="aspectFill"/><view class="pending-icon">…</view><view class="title pending-title">等待真实分析服务</view><view class="muted">这张自选图片没有套用任何内置结论。配置 <text>config.js</text> 后可上传至真实视觉分析与向量检索服务。</view><button class="ghost-btn" bindtap="goBack">返回补充信息</button></view>
+  </block>
+  <block tt:else>
+    <view class="eyebrow">APPRAISAL ROOM · AI</view>
+    <view class="hero-card card">
+      <image class="hero-image" src="{{imagePath}}" mode="aspectFill"/>
+      <view class="exhibit-no">{{item.hall}} · {{item.id ? 'BASIC' : 'ONLINE'}}</view>
+      <view class="exhibit-name">{{item.name || item.shortName}}</view>
+    </view>
+
+    <view class="section-title">失败指纹</view>
+    <view class="fingerprint-card card">
+      <view class="fp-row"><text>目标对象</text><view>{{item.target}}</view></view>
+      <view class="fp-row"><text>当前阶段</text><view>{{item.stage}}</view></view>
+      <view class="fp-row"><text>异常形态</text><view>{{item.anomaly}}</view></view>
+      <view class="fp-row"><text>异常区域</text><view>{{item.area}}</view></view>
+      <view class="fp-row"><text>严重程度</text><view>{{item.severity}}</view></view>
+      <view class="fp-row"><text>可逆程度</text><view>{{item.reversible}}</view></view>
+    </view>
+    <view tt:if="{{item.safety}}" class="warning">安全提示：{{item.safety}}</view>
+
+    <view class="section-title">原因假设 <text class="uncertain">仍需确认</text></view>
+    <view class="hypothesis card" tt:for="{{item.hypotheses}}" tt:key="name">
+      <view class="hyp-top"><text>{{index + 1}}. {{item.name}}</text><text>{{item.probability}}%</text></view>
+      <view class="bar"><view style="width:{{item.probability}}%"></view></view>
+      <view class="hyp-evidence">支持证据：{{item.evidence}}</view>
+    </view>
+
+    <view class="question card">
+      <view class="eyebrow">关键追问</view><view class="question-text">{{item.question}}</view>
+      <view class="answers"><button class="ghost-btn" data-answer="yes" bindtap="answerQuestion">可以 / 是</button><button class="ghost-btn" data-answer="no" bindtap="answerQuestion">不可以 / 否</button></view>
+      <view tt:if="{{answered}}" class="recorded">✓ 已记录。在线模式下将重新计算原因概率。</view>
+    </view>
+
+    <view class="section-title">同款翻车</view>
+    <view class="tabs"><view tt:for="{{tabs}}" tt:key="*this" class="tab {{matchesTab === index ? 'active' : ''}}" data-index="{{index}}" bindtap="selectTab">{{item}}</view></view>
+    <block tt:for="{{item.matches}}" tt:key="title"><view tt:if="{{index === matchesTab}}" class="match card"><view><view class="match-kind">{{item.kind}}</view><view class="match-title">{{item.title}}</view><view class="match-source">{{item.source}} · {{item.verified ? '已验证案例' : '未验证'}}</view></view><view class="score">{{item.score}}<text>%</text></view></view></block>
+    <view class="truth">这里只显示实际返回或明确标注的内置基础案例，不展示虚构馆藏总数。</view>
+    <button class="primary-btn" bindtap="chooseAction">查看四条处置路线</button>
+  </block>
+</view>

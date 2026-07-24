@@ -1,0 +1,11 @@
+<view class="page collection">
+  <view class="collection-head"><view><view class="eyebrow">MY ARCHIVE</view><view class="title small">我的馆藏</view></view><view class="count">{{collections.length}} 件</view></view>
+  <view tt:if="{{collections.length === 0}}" class="empty card"><view class="empty-frame">□</view><view class="empty-title">展柜还是空的</view><view class="muted">完成一次处置流程后，展品会保存在本机。</view><button class="primary-btn" bindtap="create">收下第一件翻车</button></view>
+  <view tt:else>
+    <view class="archive-card card" tt:for="{{collections}}" tt:key="recordId">
+      <image src="{{item.image}}" mode="aspectFill"/>
+      <view class="archive-body"><view class="archive-meta"><text>{{item.hall}}</text><text>{{item.createdAt}}</text></view><view class="archive-name">{{item.name}}</view><view class="archive-route">处理路线 · {{item.routeName}}</view><view class="status">{{item.verified ? '已通过在线视觉复核' : '用户完成步骤，未在线复核'}}</view><button class="delete" data-id="{{item.recordId}}" bindtap="remove">移出馆藏</button></view>
+    </view>
+    <button class="primary-btn" bindtap="create">继续入馆</button>
+  </view>
+</view>

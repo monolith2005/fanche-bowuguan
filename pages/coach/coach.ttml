@@ -1,0 +1,26 @@
+<view class="page coach" tt:if="{{item}}">
+  <view class="coach-head"><view><view class="eyebrow">LIVE CONSERVATION</view><view class="title small">{{routeKey === 'stop' ? '安全止损清单' : '现场陪练'}}</view></view><view class="counter">{{finished ? route.steps.length : currentStep + 1}} / {{route.steps.length}}</view></view>
+  <view class="progress-bar"><view style="width:{{finished ? 100 : (currentStep + 1) / route.steps.length * 100}}%"></view></view>
+
+  <block tt:if="{{!finished}}">
+    <view class="step-card card">
+      <view class="step-label">当前步骤 {{currentStep + 1}}</view>
+      <view class="step-copy">{{route.steps[currentStep]}}</view>
+      <view tt:if="{{item.safety}}" class="warning">{{item.safety}}</view>
+    </view>
+    <view class="verify-card card">
+      <view class="verify-title">做完后，拍一下当前状态</view><view class="muted">用于决定是否进入下一步。未接服务时仅作人工复核，不会显示虚假 AI 通过。</view>
+      <view class="photo-box" bindtap="takeCheckPhoto"><image tt:if="{{checkImage}}" src="{{checkImage}}" mode="aspectFill"/><view tt:else><text>◎</text><view>拍摄 / 选择复查图片</view></view></view>
+      <button class="ghost-btn" loading="{{verifying}}" bindtap="verify">验证当前状态</button>
+      <view tt:if="{{verifyResult}}" class="result {{verifyResult.offline ? 'offline' : ''}}"><view>{{verifyResult.title || '视觉验证结果'}}</view><text>{{verifyResult.message || verifyResult.summary}}</text></view>
+    </view>
+    <button class="primary-btn" bindtap="nextStep">{{currentStep + 1 === route.steps.length ? '完成全部步骤' : '我已确认，下一步'}}</button>
+  </block>
+
+  <view tt:else class="finish-card card">
+    <view class="seal">藏</view><view class="title finish-title">处理步骤完成</view>
+    <view class="muted">是否真正抢救成功由你决定。归档只记录“完成步骤”，不会自动宣称结果成功。</view>
+    <view class="summary"><text>展品</text><view>{{item.name}}</view><text>处置</text><view>{{route.summary}}</view></view>
+    <button class="primary-btn" bindtap="finish">生成馆藏档案</button>
+  </view>
+</view>

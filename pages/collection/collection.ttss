@@ -1,0 +1,16 @@
+.collection-head { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:30rpx; }
+.small { font-size:52rpx; margin-top:10rpx; }
+.count { color:#d95d39; font-weight:700; padding-bottom:8rpx; }
+.empty { margin-top:70rpx; padding:50rpx 34rpx; text-align:center; }
+.empty-frame { font-size:100rpx; color:#d4c5b3; }
+.empty-title { font-family:serif; font-size:38rpx; font-weight:800; }
+.empty .muted { margin:16rpx 0 34rpx; }
+.archive-card { overflow:hidden; margin-bottom:22rpx; }
+.archive-card image { width:100%; height:390rpx; }
+.archive-body { padding:25rpx; }
+.archive-meta { display:flex; justify-content:space-between; color:#9a5b43; font-size:20rpx; }
+.archive-name { font-family:serif; font-size:34rpx; font-weight:800; line-height:1.4; margin:15rpx 0; }
+.archive-route { font-weight:700; }
+.status { display:inline-flex; margin-top:12rpx; background:#f2e9dc; color:#75695b; padding:8rpx 12rpx; border-radius:8rpx; font-size:20rpx; }
+.delete { margin:18rpx 0 0; padding:0; text-align:left; background:transparent; color:#a66b55; font-size:22rpx; line-height:1.8; }
+.delete::after { border:0; }
