@@ -2,6 +2,7 @@
   const halls = [
     {
       id: 'kitchen', name: '厨房事故馆', icon: '◒', desc: '蛋糕塌陷、奶油异常、煎糊与食品安全', color: '#c96d42', status: 'open',
+      world: { door: { x: 493, y: 272 }, interior: '/assets/images/pixel-world/interiors/kitchen.webp', curator: '苏糖馆长', curatorIndex: 0, welcome: '先别急着继续加工。把现场交给我，我们先确认状态和食品安全。' },
       theme: {
         palette: {
           paper: '#eee3cb', card: '#fff9ea', ink: '#33261f', muted: '#685e52', line: '#c8b68f',
@@ -27,11 +28,11 @@
         motion: ['cloud', 'steam', 'water', 'flag', 'leaf', 'visitor']
       }
     },
-    { id: 'beauty', name: '变美事故馆', icon: '〽', desc: '眼线、底妆、发型、美甲与染发色差', color: '#b55257' },
-    { id: 'craft', name: '手作事故馆', icon: '⌂', desc: '黏土、模型、绘画、编织与结构倒塌', color: '#846b4f' },
-    { id: 'home', name: '家居改造馆', icon: '◇', desc: '墙面色差、组装错误、贴膜气泡与清洁痕迹', color: '#61736d' },
-    { id: 'plant', name: '植物急救馆', icon: '♧', desc: '黄叶、徒长、倒伏、浇水异常与换盆萎蔫', color: '#657c4c' },
-    { id: 'camera', name: '拍摄翻车馆', icon: '◉', desc: '构图、光线、显矮、运镜与氛围失效', color: '#586779' }
+    { id: 'beauty', name: '变美事故馆', icon: '〽', desc: '眼线、底妆、发型、美甲与染发色差', color: '#b55257', status: 'open', world: { door: { x: 1101, y: 279 }, interior: '/assets/images/pixel-world/interiors/beauty.webp', curator: '桃桃馆长', curatorIndex: 1, welcome: '左右不一样不代表要全部重来。先让我看看差异发生在哪一步。' } },
+    { id: 'craft', name: '手作事故馆', icon: '⌂', desc: '黏土、模型、绘画、编织与结构倒塌', color: '#846b4f', status: 'open', world: { door: { x: 501, y: 496 }, interior: '/assets/images/pixel-world/interiors/craft.webp', curator: '阿绳馆长', curatorIndex: 2, welcome: '结构、材料和顺序都可能留下线索。把翻车现场放到工作台上吧。' } },
+    { id: 'home', name: '家居改造馆', icon: '◇', desc: '墙面色差、组装错误、贴膜气泡与清洁痕迹', color: '#61736d', status: 'open', world: { door: { x: 1097, y: 499 }, interior: '/assets/images/pixel-world/interiors/home.webp', curator: '鲁班馆长', curatorIndex: 3, welcome: '先判断是外观问题还是结构风险，再决定修补、重装还是止损。' } },
+    { id: 'plant', name: '植物急救馆', icon: '♧', desc: '黄叶、徒长、倒伏、浇水异常与换盆萎蔫', color: '#657c4c', status: 'open', world: { door: { x: 500, y: 742 }, interior: '/assets/images/pixel-world/interiors/plant.webp', curator: '青芽馆长', curatorIndex: 4, welcome: '叶色、土壤和根系会一起说话。请把最异常的位置拍清楚。' } },
+    { id: 'camera', name: '拍摄翻车馆', icon: '◉', desc: '构图、光线、显矮、运镜与氛围失效', color: '#586779', status: 'open', world: { door: { x: 1116, y: 748 }, interior: '/assets/images/pixel-world/interiors/camera.webp', curator: '焦点馆长', curatorIndex: 5, welcome: '画面没达到预期，通常能从机位、光线和运动里找到原因。' } }
   ]
 
   const hallByCase = { cake: 'kitchen', eyeliner: 'beauty', house: 'craft' }

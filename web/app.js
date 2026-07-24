@@ -83,7 +83,7 @@
     return '<div class="steps-nav">' + names.map(function (name, index) { return index === active ? '<b>' + name + '</b>' : '<span>' + name + '</span>' }).join('') + '</div>'
   }
 
-  function renderHome() {
+  function renderLegacyHome() {
     const halls = platform.halls
     const cards = cases.map(function (item) {
       return '<button type="button" class="case-card case-card-button" data-case="' + item.id + '"><img src="..' + item.image + '" alt="' + esc(item.shortName) + '"><span class="case-body"><span class="case-meta"><span>' + esc(item.hall) + '</span><span>馆藏案例</span></span><span class="case-name">' + esc(item.name) + '</span><span class="chips"><span class="chip">' + esc(item.severity) + '</span><span class="chip">可逆性 ' + esc(item.reversible) + '</span></span></span></button>'
@@ -97,7 +97,7 @@
     app.querySelector('.mobile-nav').insertAdjacentHTML('beforebegin', snapshot)
   }
 
-  function renderHallEntrance() {
+  function renderLegacyHallEntrance() {
     const hall = hallById(state.routeHallId), theme = hall && hall.theme
     if (!hall || !theme || hall.status !== 'open') { go(hall ? 'halls/' + hall.id : 'halls', { replace: true }); return }
     const mobileDoor = theme.door.mobile, desktopDoor = theme.door.desktop
@@ -114,7 +114,90 @@
     app.innerHTML = shell('<section class="hall-gateway" data-gateway="' + hall.id + '" style="' + gatewayStyle + '"><picture class="hall-scene"><source media="(max-width: 800px)" srcset="..' + theme.scene.mobile + '"><img src="..' + theme.scene.desktop + '" alt="' + esc(theme.scene.alt) + '" fetchpriority="high"></picture><div class="hall-scene__veil" aria-hidden="true"></div>' + ambient + '<div class="hall-gateway__heading"><div class="eyebrow">' + esc(theme.entry.eyebrow) + '</div><h1 data-page-title tabindex="-1">' + esc(theme.entry.title) + '</h1><p>' + esc(theme.entry.description) + '</p><span class="hall-open-badge">PIXEL PILOT · 今日开放</span></div><button type="button" class="hall-door" data-enter-door="' + hall.id + '" aria-label="' + esc(theme.entry.cta + hall.name) + '"><span class="hall-door__glow" aria-hidden="true"></span><span class="hall-door__frame" aria-hidden="true"><i class="hall-door__left"></i><i class="hall-door__right"></i></span><span class="hall-door__label">' + esc(theme.entry.cta) + '<small>ENTER GALLERY</small></span></button><div class="hall-gateway__legend"><span>◒ 食材安全优先</span><span>01 / 06 主题展馆</span></div></section>', { immersive: true })
   }
 
+  function worldHud(mode, hall) {
+    const brand = '<button class="game-brand" data-page="' + (mode === 'home' ? 'home' : 'halls') + '"><span>FM</span><b>翻车博物馆<small>FAILURE MUSEUM</small></b></button>'
+    if (mode === 'home') return '<header class="game-hud game-hud--opening">' + brand + '<div class="game-hud__opening-actions"><button data-action="settings">服务设置</button><button class="game-hud__enter" data-page="halls">进入主馆</button></div></header>'
+    const hallLabel = hall ? '<div class="game-location"><span>' + hall.icon + '</span><b>' + esc(hall.name) + '</b></div>' : '<div class="game-location"><span>⌂</span><b>中央草坪</b></div>'
+    return '<header class="game-hud">' + brand + hallLabel + '<button class="game-hud__menu" data-world-command="toggle-menu" aria-label="打开功能菜单">☰</button><nav class="game-hud__nav" aria-label="博物馆功能"><button data-page="halls" class="' + (!hall ? 'active' : '') + '">大厅</button><button data-world-command="directory">主题展馆</button><button data-page="community">社区</button><button data-page="curator">馆长中心</button><button data-page="collection">我的馆藏</button><button data-action="settings">服务设置</button></nav></header>'
+  }
+
+  function worldPlayer() {
+    return '<div class="world-player" data-world-player data-direction="up" data-frame="0" aria-hidden="true"><span class="world-player__shadow"></span><span class="world-player__sprite"></span></div>'
+  }
+
+  function worldHelp(copy) {
+    return '<aside class="world-help"><b>点击 / 触摸</b>移动 · 电脑支持 <b>WASD</b><span>' + esc(copy) + '</span></aside>'
+  }
+
+  function directoryDialog() {
+    const buttons = platform.halls.map(function (hall) { return '<button data-enter-hall="' + hall.id + '"><span>' + hall.icon + '</span><b>' + esc(hall.name) + '</b><small>' + esc(hall.desc) + '</small></button>' }).join('')
+    return '<section class="game-dialog game-directory" data-world-directory hidden role="dialog" aria-modal="true" aria-label="主题展馆导览"><div class="game-dialog__panel"><button class="game-dialog__close" data-world-command="close-dialog" aria-label="关闭">×</button><div class="game-dialog__eyebrow">CAMPUS DIRECTORY</div><h2>六座主题展馆</h2><p>选择展馆后，角色会从对应入口开始参观。</p><div class="game-directory__grid">' + buttons + '</div></div></section>'
+  }
+
+  function curatorDialog(hall) {
+    return '<section class="game-dialog" data-curator-dialog hidden role="dialog" aria-modal="true" aria-label="与' + esc(hall.world.curator) + '对话"><div class="game-dialog__panel game-dialog__panel--curator"><button class="game-dialog__close" data-world-command="close-dialog" aria-label="关闭">×</button><div class="game-dialog__portrait" data-curator-index="' + hall.world.curatorIndex + '"></div><div><div class="game-dialog__eyebrow">CURATOR · ' + String(hall.world.curatorIndex + 1).padStart(2, '0') + '</div><h2>' + esc(hall.world.curator) + '</h2><p>“' + esc(hall.world.welcome) + '”</p><div class="game-dialog__actions"><button class="btn primary" data-world-command="submit-case" data-hall-id="' + hall.id + '">提交我的翻车案例</button><button class="btn secondary" data-world-command="browse-collection" data-hall-id="' + hall.id + '">查看本馆馆藏</button></div></div></div></section>'
+  }
+
+  function renderHome() {
+    delete document.body.dataset.theme
+    app.innerHTML = '<main class="game-world game-world--opening"><div class="game-viewport" data-world-viewport><div class="game-stage" data-world-stage style="background-image:url(../assets/images/pixel-world/museum-exterior.webp)"><div class="museum-title-card"><div>VISUAL SEARCH · FAILURE MUSEUM</div><h1>翻车博物馆</h1><p>每一次失败，都值得被认真收藏。</p></div><button class="world-poi world-poi--museum" data-world-poi="museum-door" data-action="enter-museum" data-x="800" data-y="505" style="--x:800px;--y:430px"><span>推门入馆</span><small>ENTER MUSEUM</small></button>' + worldPlayer() + '</div></div>' + worldHud('home') + worldHelp('沿中央道路走到博物馆大门') + '</main>'
+    window.MuseumWorld.mount({
+      width: 1600, height: 1000, spawn: { x: 800, y: 930 }, bounds: { left: 300, top: 455, right: 1300, bottom: 970 }, obstacles: [],
+      onInteract: function (action) { if (action === 'enter-museum') go('halls') }
+    })
+  }
+
+  function renderCampus() {
+    delete document.body.dataset.theme
+    const pois = platform.halls.map(function (hall) {
+      const door = hall.world.door
+      return '<button class="world-poi world-poi--hall" data-world-poi="hall-' + hall.id + '" data-action="enter-hall" data-id="' + hall.id + '" data-x="' + door.x + '" data-y="' + (door.y + 36) + '" style="--x:' + door.x + 'px;--y:' + door.y + 'px;--hall-color:' + hall.color + '"><span>' + hall.icon + ' ' + esc(hall.name) + '</span><small>推门参观</small></button>'
+    }).join('')
+    app.innerHTML = '<main class="game-world game-world--campus"><div class="game-viewport" data-world-viewport><div class="game-stage" data-world-stage style="background-image:url(../assets/images/pixel-world/campus-map.webp)"><div class="campus-title-card"><small>FAILURE MUSEUM CAMPUS</small><b>中央草坪 · 六馆开放</b></div>' + pois + worldPlayer() + '</div></div>' + worldHud('campus') + worldHelp('点击任意展馆门口，角色会自动寻找路线') + directoryDialog() + '</main>'
+    window.MuseumWorld.mount({
+      width: 1600, height: 1024, spawn: { x: 800, y: 945 }, bounds: { left: 35, top: 35, right: 1565, bottom: 990 },
+      obstacles: [
+        { x: 315, y: 35, width: 390, height: 205 }, { x: 920, y: 35, width: 390, height: 210 },
+        { x: 315, y: 305, width: 390, height: 150 }, { x: 920, y: 305, width: 390, height: 155 },
+        { x: 300, y: 555, width: 410, height: 145 }, { x: 920, y: 555, width: 410, height: 150 },
+        { x: 15, y: 20, width: 255, height: 205 }
+      ],
+      onInteract: function (action, id) { if (action === 'enter-hall') go('hall/' + id) }
+    })
+  }
+
+  function openCuratorDialog() {
+    const dialog = document.querySelector('[data-curator-dialog]')
+    if (!dialog) return
+    dialog.hidden = false
+    const first = dialog.querySelector('button')
+    if (first) first.focus()
+  }
+
+  function renderHallEntrance() {
+    const hall = hallById(state.routeHallId)
+    if (!hall || !hall.world) { go('halls', { replace: true }); return }
+    document.body.dataset.theme = hall.id
+    const curator = '<div class="world-curator" data-curator-index="' + hall.world.curatorIndex + '" style="--x:800px;--y:305px"><span class="world-curator__sprite"></span><b>' + esc(hall.world.curator) + '</b></div>'
+    const poi = '<button class="world-poi world-poi--npc" data-world-poi="curator-' + hall.id + '" data-action="talk-curator" data-id="' + hall.id + '" data-x="800" data-y="430" style="--x:800px;--y:360px"><span>与馆长对话</span><small>提交案例</small></button>'
+    const exit = '<button class="world-poi world-poi--exit" data-world-poi="exit-' + hall.id + '" data-action="exit-hall" data-id="' + hall.id + '" data-x="800" data-y="900" style="--x:800px;--y:930px"><span>返回中央草坪</span></button>'
+    app.innerHTML = '<main class="game-world game-world--interior" style="--hall-color:' + hall.color + '"><div class="game-viewport" data-world-viewport><div class="game-stage" data-world-stage style="background-image:url(..' + hall.world.interior + ')">' + curator + poi + exit + worldPlayer() + '</div></div>' + worldHud('hall', hall) + worldHelp('走近馆长，提交案例或查看本馆馆藏') + curatorDialog(hall) + directoryDialog() + '</main>'
+    window.MuseumWorld.mount({
+      width: 1600, height: 1000, spawn: { x: 800, y: 885 }, bounds: { left: 95, top: 250, right: 1505, bottom: 920 },
+      obstacles: [
+        { x: 85, y: 220, width: 420, height: 190 }, { x: 1095, y: 220, width: 420, height: 190 },
+        { x: 80, y: 560, width: 430, height: 230 }, { x: 1090, y: 560, width: 430, height: 230 },
+        { x: 620, y: 150, width: 360, height: 175 }
+      ],
+      onInteract: function (action) {
+        if (action === 'talk-curator') openCuratorDialog()
+        if (action === 'exit-hall') go('halls')
+      }
+    })
+  }
+
   function renderHalls() {
+    if (!state.routeHallId && state.hallId === 'all') { renderCampus(); return }
     const selectedHall = state.hallId === 'all' ? null : platform.halls.filter(function (hall) { return hall.id === state.hallId })[0]
     const query = state.hallQuery.toLowerCase()
     const filtered = cases.filter(function (item) {
@@ -310,7 +393,7 @@
     const raw = String(value || '').replace(/^#/, '').replace(/^\//, '') || 'home'
     const parts = raw.split('/').filter(Boolean), root = parts[0], hallId = parts[1] || ''
     const hall = hallById(hallId)
-    if (root === 'hall' && hall && hall.theme && hall.status === 'open') return { page: 'hall', hallId: hall.id, canonical: 'hall/' + hall.id }
+    if (root === 'hall' && hall && (hall.world || hall.theme) && hall.status === 'open') return { page: 'hall', hallId: hall.id, canonical: 'hall/' + hall.id }
     if (root === 'halls' && hall) return { page: 'halls', hallId: hall.id, canonical: 'halls/' + hall.id }
     if (root === 'halls' && !hallId) return { page: 'halls', hallId: '', canonical: 'halls' }
     if (['home', 'intake', 'diagnosis', 'action', 'coach', 'finish', 'result', 'community', 'curator', 'collection'].indexOf(root) >= 0 && parts.length === 1) return { page: root, hallId: '', canonical: root }
@@ -324,6 +407,7 @@
   }
 
   function render() {
+    if (window.MuseumWorld) window.MuseumWorld.destroy()
     applyDocumentTheme()
     window.scrollTo({ top: 0, behavior: 'instant' })
     if (state.page === 'home') renderHome()
@@ -565,6 +649,27 @@
   }
 
   app.addEventListener('click', function (event) {
+    const worldCommand = event.target.closest('[data-world-command]')
+    if (worldCommand) {
+      const command = worldCommand.dataset.worldCommand
+      if (command === 'toggle-menu') {
+        const hud = worldCommand.closest('.game-hud')
+        if (hud) hud.classList.toggle('is-menu-open')
+      }
+      if (command === 'directory') {
+        const dialog = document.querySelector('[data-world-directory]')
+        if (dialog) { dialog.hidden = false; const close = dialog.querySelector('button'); if (close) close.focus() }
+      }
+      if (command === 'close-dialog') {
+        const dialog = worldCommand.closest('.game-dialog')
+        if (dialog) dialog.hidden = true
+      }
+      if (command === 'submit-case') {
+        resetVisit(worldCommand.dataset.hallId); go('intake')
+      }
+      if (command === 'browse-collection') go('halls/' + worldCommand.dataset.hallId)
+      return
+    }
     const pageButton = event.target.closest('[data-page]')
     if (pageButton) {
       if (pageButton.dataset.communityTab) state.communityTab = pageButton.dataset.communityTab
@@ -733,6 +838,11 @@
     applyRoute(route)
     if (route.invalid) history.replaceState({ page: 'home' }, '', '#home')
     render()
+  })
+  window.addEventListener('keydown', function (event) {
+    if (event.key !== 'Escape') return
+    const dialog = document.querySelector('.game-dialog:not([hidden])')
+    if (dialog) dialog.hidden = true
   })
   const initialRoute = parseRoute(location.hash)
   const previewParams = new URLSearchParams(location.search)
