@@ -1,6 +1,32 @@
 (function (root) {
   const halls = [
-    { id: 'kitchen', name: '厨房事故馆', icon: '◒', desc: '蛋糕塌陷、奶油异常、煎糊与食品安全', color: '#c96d42' },
+    {
+      id: 'kitchen', name: '厨房事故馆', icon: '◒', desc: '蛋糕塌陷、奶油异常、煎糊与食品安全', color: '#c96d42', status: 'open',
+      theme: {
+        palette: {
+          paper: '#eee3cb', card: '#fff9ea', ink: '#33261f', muted: '#685e52', line: '#c8b68f',
+          accent: '#9c4f2f', accentDark: '#6d3826', sage: '#748268', water: '#4f9295', copper: '#8b5233', gold: '#c89b4e'
+        },
+        scene: {
+          mobile: '/assets/images/halls/kitchen-entry-mobile.jpg',
+          desktop: '/assets/images/halls/kitchen-entry-desktop.jpg',
+          masterMobile: '/assets/images/halls/kitchen-entry-mobile.png',
+          masterDesktop: '/assets/images/halls/kitchen-entry-desktop.png',
+          alt: '夕阳下的厨房事故馆像素庭院，古典柱廊、宽阔台阶与水渠通向中央大门'
+        },
+        door: {
+          mobile: { left: 50, top: 47, width: 9, height: 12 },
+          desktop: { left: 50, top: 42, width: 5, height: 13 }
+        },
+        entry: {
+          eyebrow: 'Kitchen Accident Gallery · No. 01',
+          title: '厨房事故馆',
+          description: '奶油分离、蛋糕塌陷与每一次来不及端上桌的意外，都可以在这里被认真鉴定。',
+          cta: '推门入馆'
+        },
+        motion: ['cloud', 'steam', 'water', 'flag', 'leaf', 'visitor']
+      }
+    },
     { id: 'beauty', name: '变美事故馆', icon: '〽', desc: '眼线、底妆、发型、美甲与染发色差', color: '#b55257' },
     { id: 'craft', name: '手作事故馆', icon: '⌂', desc: '黏土、模型、绘画、编织与结构倒塌', color: '#846b4f' },
     { id: 'home', name: '家居改造馆', icon: '◇', desc: '墙面色差、组装错误、贴膜气泡与清洁痕迹', color: '#61736d' },
