@@ -6,7 +6,8 @@
   const state = {
     page: 'home', visit: null, selectedRoute: '', currentStep: 0,
     checkImage: '', verifyResult: null, matchTab: 0, busy: false,
-    hallId: 'all', hallQuery: '', communityTab: 'new', resultTab: 'archive', contentTemplate: 'documentary',
+    hallId: 'all', routeHallId: '', entryHallId: '', collectionHallId: '', hallQuery: '', communityTab: 'new', resultTab: 'archive', contentTemplate: 'documentary',
+    enteringHall: false, focusPageTitle: false,
     backendReady: false, arkConfigured: false, redfoxConfigured: false, arkModel: '',
     douyinResults: [], douyinLoading: false, douyinError: '', douyinKeyword: '',
     ffmpegAvailable: false, videoTemplate: 'documentary-20', videoJob: null
@@ -42,9 +43,40 @@
     if (state.backendReady) return '本地 AI 代理已运行，但尚未配置方舟密钥。馆藏案例可体验，自选现场会返回配置提示。'
     return '未检测到本地 AI 代理。馆藏案例可体验，自选现场进入待分析状态。'
   }
-  function shell(content) {
-    const hallActive = state.page === 'halls', communityActive = state.page === 'community', curatorActive = state.page === 'curator'
-    return '<main class="shell"><header class="topbar"><button class="icon-btn brand" data-page="home"><span class="brand-mark">FM</span><span>翻车博物馆<small>FAILURE MUSEUM</small></span></button><nav class="nav"><button data-page="home" class="' + (state.page === 'home' ? 'active' : '') + '">大厅</button><button data-page="halls" class="' + (hallActive ? 'active' : '') + '">主题展馆</button><button data-page="community" class="' + (communityActive ? 'active' : '') + '">社区</button><button data-page="curator" class="' + (curatorActive ? 'active' : '') + '">馆长中心</button><button data-page="collection" class="' + (state.page === 'collection' ? 'active' : '') + '">我的馆藏</button><button data-action="settings">服务设置</button></nav></header>' + content + '<nav class="mobile-nav"><button data-page="home" class="' + (state.page === 'home' ? 'active' : '') + '">大厅</button><button data-page="halls" class="' + (hallActive ? 'active' : '') + '">展馆</button><button data-page="intake" class="' + (state.page === 'intake' ? 'active' : '') + '">＋ 入馆</button><button data-page="community" class="' + (communityActive ? 'active' : '') + '">社区</button><button data-page="curator" class="' + (curatorActive ? 'active' : '') + '">馆长</button></nav></main>'
+  function hallById(id) { return platform.halls.filter(function (hall) { return hall.id === id })[0] || null }
+  function hallIdByName(name) {
+    const hall = platform.halls.filter(function (item) { return item.name === name })[0]
+    return hall ? hall.id : ''
+  }
+  function resolveHallIdFromVisit(visit) {
+    if (!visit) return ''
+    const item = visit.analysis || {}, caseId = item.id || visit.caseId || ''
+    return platform.hallByCase[caseId] || hallIdByName(item.hall) || visit.entryHallId || ''
+  }
+  function isWorkflowPage(page) { return ['intake', 'diagnosis', 'action', 'coach', 'finish', 'result'].indexOf(page) >= 0 }
+  function activeHallId() {
+    if ((state.page === 'hall' || state.page === 'halls') && state.routeHallId) return state.routeHallId
+    if (state.page === 'collection') return state.collectionHallId || ''
+    if (!isWorkflowPage(state.page)) return ''
+    return resolveHallIdFromVisit(state.visit) || state.entryHallId || ''
+  }
+  function activeHall() { return hallById(activeHallId()) }
+  function applyDocumentTheme() {
+    const hall = activeHall(), themeId = hall && hall.theme ? hall.id : ''
+    if (themeId) document.body.dataset.theme = themeId
+    else delete document.body.dataset.theme
+  }
+  function hallContextRibbon(label) {
+    const hall = activeHall()
+    if (!hall || !hall.theme) return ''
+    return '<aside class="hall-context" aria-label="当前所在展馆"><span class="hall-context__icon">' + hall.icon + '</span><span><b>' + esc(hall.name) + '</b><small>' + esc(label || '馆内参观路线') + '</small></span></aside>'
+  }
+  function shell(content, options) {
+    applyDocumentTheme()
+    const hall = activeHall(), themed = hall && hall.theme, immersive = options && options.immersive
+    const hallActive = state.page === 'hall' || state.page === 'halls', communityActive = state.page === 'community', curatorActive = state.page === 'curator'
+    const shellClass = 'shell' + (themed ? ' theme-' + hall.id : '') + (immersive ? ' shell--immersive' : '')
+    return '<main class="' + shellClass + '"><header class="topbar"><button class="icon-btn brand" data-page="home"><span class="brand-mark">FM</span><span>翻车博物馆<small>FAILURE MUSEUM</small></span></button><nav class="nav"><button data-page="home" class="' + (state.page === 'home' ? 'active' : '') + '">大厅</button><button data-page="halls" class="' + (hallActive ? 'active' : '') + '">主题展馆</button><button data-page="community" class="' + (communityActive ? 'active' : '') + '">社区</button><button data-page="curator" class="' + (curatorActive ? 'active' : '') + '">馆长中心</button><button data-page="collection" class="' + (state.page === 'collection' ? 'active' : '') + '">我的馆藏</button><button data-action="settings">服务设置</button></nav></header>' + content + '<nav class="mobile-nav"><button data-page="home" class="' + (state.page === 'home' ? 'active' : '') + '">大厅</button><button data-page="halls" class="' + (hallActive ? 'active' : '') + '">展馆</button><button data-page="intake" class="' + (state.page === 'intake' ? 'active' : '') + '">＋ 入馆</button><button data-page="community" class="' + (communityActive ? 'active' : '') + '">社区</button><button data-page="curator" class="' + (curatorActive ? 'active' : '') + '">馆长</button></nav></main>'
   }
   function progress(active) {
     const names = ['1 入馆', '2 鉴定', '3 处置', '4 归档']
@@ -54,12 +86,32 @@
   function renderHome() {
     const halls = platform.halls
     const cards = cases.map(function (item) {
-      return '<article class="case-card" data-case="' + item.id + '"><img src="..' + item.image + '" alt="' + esc(item.shortName) + '"><div class="case-body"><div class="case-meta"><span>' + esc(item.hall) + '</span><span>馆藏案例</span></div><div class="case-name">' + esc(item.name) + '</div><div class="chips"><span class="chip">' + esc(item.severity) + '</span><span class="chip">可逆性 ' + esc(item.reversible) + '</span></div></div></article>'
+      return '<button type="button" class="case-card case-card-button" data-case="' + item.id + '"><img src="..' + item.image + '" alt="' + esc(item.shortName) + '"><span class="case-body"><span class="case-meta"><span>' + esc(item.hall) + '</span><span>馆藏案例</span></span><span class="case-name">' + esc(item.name) + '</span><span class="chips"><span class="chip">' + esc(item.severity) + '</span><span class="chip">可逆性 ' + esc(item.reversible) + '</span></span></span></button>'
     }).join('')
-    const hallCards = halls.map(function (item) { return '<article class="card hall" data-hall="' + item.id + '"><div class="hall-icon">' + item.icon + '</div><div class="hall-name">' + item.name + '</div><div class="hall-desc">' + item.desc + '</div></article>' }).join('')
+    const hallCards = halls.map(function (item) {
+      if (item.theme && item.status === 'open') return '<button type="button" class="card hall hall-card-button hall--featured" data-enter-hall="' + item.id + '"><span class="hall-preview"><picture><source media="(max-width: 800px)" srcset="..' + item.theme.scene.mobile + '"><img src="..' + item.theme.scene.desktop + '" alt="" loading="lazy"></picture><span class="hall-status">样板馆 · 开放中</span></span><span class="hall-copy"><span class="hall-icon">' + item.icon + '</span><span class="hall-name">' + item.name + '</span><span class="hall-desc">' + item.desc + '</span><span class="hall-enter">参观像素门头 →</span></span></button>'
+      return '<button type="button" class="card hall hall-card-button" data-browse-hall="' + item.id + '"><span class="hall-icon">' + item.icon + '</span><span class="hall-name">' + item.name + '</span><span class="hall-desc">' + item.desc + '</span></button>'
+    }).join('')
     app.innerHTML = shell('<section class="hero"><div><div class="eyebrow">Visual Search · Failure Museum</div><h1 class="title">今天又有什么<br><span class="accent">翻了</span>？</h1><p class="lead">拍下现场，找到和你失败得最像的人。判断为什么翻、还能不能救，并把失败变成一件值得分享的展品。</p><div class="hero-actions"><button class="btn primary" data-page="intake">◎ 拍下翻车现场</button><button class="btn secondary" data-page="community">参观博物馆社区</button></div></div><aside class="hero-ticket"><div class="ticket-num">ADMIT ONE · VISUAL SEARCH</div><div class="ticket-copy">失败不是终点，<br>只是换了一条<br>参观路线。</div><div class="ticket-foot"><span>今日开放</span><span>01—04</span></div></aside></section><section id="cases" class="section"><div class="section-head"><div class="section-title">正在展出的馆藏</div><div class="caption">三个真实案例，覆盖三类事故</div></div><div class="case-grid">' + cards + '</div></section><section class="section"><div class="section-head"><div class="section-title">六座主题展馆</div><button class="btn ghost" data-page="halls">查看全部馆藏</button></div><div class="hall-grid">' + hallCards + '</div></section><section class="section feature-grid"><article class="card feature"><div class="eyebrow">Community</div><h3>同款受害者，不再独自翻车</h3><p>围绕失败指纹组织新展、会诊、抢救成功记录与同款联盟。</p><button class="btn secondary" data-page="community">进入社区</button></article><article class="card feature"><div class="eyebrow">Curator System</div><h3>让教程创作者成为馆长</h3><p>提交典型案例、抢救胶囊、处理边界与品牌 Skill 草稿。</p><button class="btn secondary" data-page="curator">进入馆长中心</button></article></section>')
     const currentPosts = allPosts(), snapshot = '<section class="section"><div class="section-head"><div class="section-title">博物馆正在发生</div><div class="caption">全部来自当前实际数据</div></div><div class="snapshot-grid"><button data-community-tab="new" data-page="community"><b>' + currentPosts.filter(function (post) { return post.section === 'new' }).length + '</b><span>今日新展</span></button><button data-community-tab="treasure" data-page="community"><b>' + currentPosts.filter(function (post) { return (post.comments || []).length > 0 }).length + '</b><span>镇馆候选</span></button><button data-community-tab="rescued" data-page="community"><b>' + currentPosts.filter(function (post) { return post.section === 'rescued' }).length + '</b><span>抢救成功记录</span></button><button data-page="collection"><b>' + collections().length + '</b><span>我的馆藏</span></button></div></section>'
     app.querySelector('.mobile-nav').insertAdjacentHTML('beforebegin', snapshot)
+  }
+
+  function renderHallEntrance() {
+    const hall = hallById(state.routeHallId), theme = hall && hall.theme
+    if (!hall || !theme || hall.status !== 'open') { go(hall ? 'halls/' + hall.id : 'halls', { replace: true }); return }
+    const mobileDoor = theme.door.mobile, desktopDoor = theme.door.desktop
+    const gatewayStyle = '--door-left-mobile:' + mobileDoor.left + '%;--door-top-mobile:' + mobileDoor.top + '%;--door-width-mobile:' + mobileDoor.width + '%;--door-height-mobile:' + mobileDoor.height + '%;--door-left-desktop:' + desktopDoor.left + '%;--door-top-desktop:' + desktopDoor.top + '%;--door-width-desktop:' + desktopDoor.width + '%;--door-height-desktop:' + desktopDoor.height + '%'
+    const motion = Array.isArray(theme.motion) ? theme.motion : [], ambientParts = []
+    function ambientPair(name) { ambientParts.push('<i class="ambient-' + name + ' ambient-' + name + '--one"></i><i class="ambient-' + name + ' ambient-' + name + '--two"></i>') }
+    if (motion.indexOf('cloud') >= 0) ambientPair('cloud')
+    if (motion.indexOf('steam') >= 0) ambientPair('steam')
+    if (motion.indexOf('water') >= 0) ambientPair('water')
+    if (motion.indexOf('flag') >= 0) ambientParts.push('<i class="ambient-flag"></i>')
+    if (motion.indexOf('leaf') >= 0) ambientPair('leaf')
+    if (motion.indexOf('visitor') >= 0) ambientPair('visitor')
+    const ambient = ambientParts.length ? '<div class="hall-ambient" aria-hidden="true">' + ambientParts.join('') + '</div>' : ''
+    app.innerHTML = shell('<section class="hall-gateway" data-gateway="' + hall.id + '" style="' + gatewayStyle + '"><picture class="hall-scene"><source media="(max-width: 800px)" srcset="..' + theme.scene.mobile + '"><img src="..' + theme.scene.desktop + '" alt="' + esc(theme.scene.alt) + '" fetchpriority="high"></picture><div class="hall-scene__veil" aria-hidden="true"></div>' + ambient + '<div class="hall-gateway__heading"><div class="eyebrow">' + esc(theme.entry.eyebrow) + '</div><h1 data-page-title tabindex="-1">' + esc(theme.entry.title) + '</h1><p>' + esc(theme.entry.description) + '</p><span class="hall-open-badge">PIXEL PILOT · 今日开放</span></div><button type="button" class="hall-door" data-enter-door="' + hall.id + '" aria-label="' + esc(theme.entry.cta + hall.name) + '"><span class="hall-door__glow" aria-hidden="true"></span><span class="hall-door__frame" aria-hidden="true"><i class="hall-door__left"></i><i class="hall-door__right"></i></span><span class="hall-door__label">' + esc(theme.entry.cta) + '<small>ENTER GALLERY</small></span></button><div class="hall-gateway__legend"><span>◒ 食材安全优先</span><span>01 / 06 主题展馆</span></div></section>', { immersive: true })
   }
 
   function renderHalls() {
@@ -70,17 +122,19 @@
       const queryMatch = !query || [item.name, item.shortName, item.hall, item.anomaly, item.target].join(' ').toLowerCase().indexOf(query) >= 0
       return hallMatch && queryMatch
     })
-    const hallNav = '<button class="hall-pill ' + (state.hallId === 'all' ? 'active' : '') + '" data-hall="all">全部展馆</button>' + platform.halls.map(function (hall) { return '<button class="hall-pill ' + (state.hallId === hall.id ? 'active' : '') + '" data-hall="' + hall.id + '">' + hall.icon + ' ' + hall.name + '</button>' }).join('')
-    const results = filtered.length ? filtered.map(function (item) { return '<article class="case-card" data-case="' + item.id + '"><img src="..' + item.image + '" alt="' + esc(item.shortName) + '"><div class="case-body"><div class="case-meta"><span>' + esc(item.hall) + '</span><span>' + esc(item.severity) + '</span></div><div class="case-name">' + esc(item.name) + '</div><p class="caption">' + esc(item.anomaly) + '</p><div class="chips"><span class="chip">可逆性 ' + esc(item.reversible) + '</span><span class="chip">' + item.matches.length + ' 条案例切片</span></div></div></article>' }).join('') : '<div class="card empty wide"><div class="empty-icon">◇</div><div class="section-title">这个展柜正在征集案例</div><p class="lead" style="margin:12px auto 25px">当前没有符合条件的真实馆藏。可以提交你的翻车现场，或由馆长补充经过验证的案例。</p><div class="button-row center"><button class="btn primary" data-page="intake">提交翻车现场</button><button class="btn secondary" data-page="curator">馆长提交案例</button></div></div>'
-    app.innerHTML = shell('<section class="page-head"><div class="eyebrow">Themed Galleries</div><h1 class="page-title">主题展馆</h1><p class="lead">六类生活翻车共用失败指纹与视觉搜索机制，知识、风险边界和处置 Skill 分馆维护。</p></section><form id="hallSearch" class="searchbar"><input id="hallQuery" value="' + esc(state.hallQuery) + '" placeholder="搜索异常、目标或展品名"><button class="btn primary">搜索馆藏</button></form><div class="hall-pills">' + hallNav + '</div><section class="section compact"><div class="section-head"><div class="section-title">' + (selectedHall ? selectedHall.name : '全部馆藏') + '</div><div class="caption">' + filtered.length + ' 件实际可浏览案例</div></div><div class="case-grid hall-results">' + results + '</div></section>')
+    const hallNav = '<button class="hall-pill ' + (state.hallId === 'all' ? 'active' : '') + '" data-browse-hall="all">全部展馆</button>' + platform.halls.map(function (hall) { return '<button class="hall-pill ' + (state.hallId === hall.id ? 'active' : '') + '" data-browse-hall="' + hall.id + '">' + hall.icon + ' ' + hall.name + '</button>' }).join('')
+    const results = filtered.length ? filtered.map(function (item) { return '<button type="button" class="case-card case-card-button" data-case="' + item.id + '"><img src="..' + item.image + '" alt="' + esc(item.shortName) + '"><span class="case-body"><span class="case-meta"><span>' + esc(item.hall) + '</span><span>' + esc(item.severity) + '</span></span><span class="case-name">' + esc(item.name) + '</span><span class="caption">' + esc(item.anomaly) + '</span><span class="chips"><span class="chip">可逆性 ' + esc(item.reversible) + '</span><span class="chip">' + item.matches.length + ' 条案例切片</span></span></span></button>' }).join('') : '<div class="card empty wide"><div class="empty-icon">◇</div><div class="section-title">这个展柜正在征集案例</div><p class="lead" style="margin:12px auto 25px">当前没有符合条件的真实馆藏。可以提交你的翻车现场，或由馆长补充经过验证的案例。</p><div class="button-row center"><button class="btn primary" ' + (selectedHall && selectedHall.theme ? 'data-themed-intake="' + selectedHall.id + '"' : 'data-page="intake"') + '>提交翻车现场</button><button class="btn secondary" data-page="curator">馆长提交案例</button></div></div>'
+    const kitchenHead = selectedHall && selectedHall.theme ? '<section class="hall-interior-head"><div><div class="eyebrow">Inside the Gallery · Hall 01</div><h1 class="page-title" data-page-title tabindex="-1">厨房事故馆<span class="hall-interior-title-tail"> · 馆内大厅</span></h1><p class="lead">把没有端上桌的意外送进鉴定室。先确认食材安全，再决定抢救、改造、重开或止损。</p><div class="hero-actions"><button class="btn primary" data-themed-intake="' + selectedHall.id + '">◎ 提交厨房翻车</button><button class="btn ghost" data-enter-hall="' + selectedHall.id + '">返回动画门头</button></div></div><div class="pixel-plaque" aria-hidden="true"><span>COLLECTION</span><b>' + filtered.length + '</b><small>件真实馆藏</small></div></section>' : '<section class="page-head"><div class="eyebrow">Themed Galleries</div><h1 class="page-title" data-page-title tabindex="-1">主题展馆</h1><p class="lead">六类生活翻车共用失败指纹与视觉搜索机制，知识、风险边界和处置 Skill 分馆维护。</p></section>'
+    app.innerHTML = shell(kitchenHead + '<form id="hallSearch" class="searchbar"><input id="hallQuery" value="' + esc(state.hallQuery) + '" placeholder="搜索异常、目标或展品名"><button class="btn primary">搜索馆藏</button></form><div class="hall-pills">' + hallNav + '</div><section class="section compact"><div class="section-head"><div class="section-title">' + (selectedHall ? selectedHall.name + ' · 当前展柜' : '全部馆藏') + '</div><div class="caption">' + filtered.length + ' 件实际可浏览案例</div></div><div class="case-grid hall-results">' + results + '</div></section>')
   }
 
   function renderIntake() {
     const visit = state.visit || {}
     const image = visit.image || ''
-    const media = !image ? '<label class="upload-empty"><input id="imageInput" type="file" accept="image/png,image/jpeg,video/mp4,video/webm" capture="environment" hidden><div class="upload-plus">＋</div><b>拍照、选择图片或视频</b><p>支持 JPG / PNG / MP4 / WebM</p></label>' : (visit.mediaType === 'video' ? '<video src="' + image + '" controls playsinline></video>' : '<div class="region-stage" id="regionStage"><img src="' + image + '" alt="待分析图片"><div id="regionBox" class="region-box" style="' + regionStyle(visit.region) + '"></div><div class="region-hint">拖动框选异常区域</div></div>') + '<label class="badge change-media"><input id="imageInput" type="file" accept="image/png,image/jpeg,video/mp4,video/webm" hidden>更换现场</label>'
+    const media = !image ? '<label class="upload-empty"><input class="visually-hidden-file" id="imageInput" type="file" accept="image/png,image/jpeg,video/mp4,video/webm" capture="environment"><div class="upload-plus">＋</div><b>拍照、选择图片或视频</b><p>支持 JPG / PNG / MP4 / WebM</p></label>' : (visit.mediaType === 'video' ? '<video src="' + image + '" controls playsinline></video>' : '<div class="region-stage" id="regionStage"><img src="' + image + '" alt="待分析图片"><div id="regionBox" class="region-box" style="' + regionStyle(visit.region) + '"></div><div class="region-hint">拖动框选异常区域</div></div>') + '<label class="badge change-media"><input class="visually-hidden-file" id="imageInput" type="file" accept="image/png,image/jpeg,video/mp4,video/webm">更换现场</label>'
     const targetPreview = visit.targetImage ? '<img class="target-preview" src="' + visit.targetImage + '" alt="目标效果图">' : ''
-    app.innerHTML = shell(progress(0) + '<section class="page-head"><div class="eyebrow">New Exhibit</div><h1 class="page-title">提交翻车现场</h1><p class="lead">视觉表达当前结果，目标图表达想做到的状态，文字或语音补充过程和约束。</p></section><section class="intake-layout"><div><div class="card upload">' + media + '</div><div class="capture-tools"><span>' + (visit.region ? '已记录异常区域' : '图片可拖动框选异常区域') + '</span><label class="btn ghost"><input id="targetInput" type="file" accept="image/png,image/jpeg" hidden>＋ 添加目标效果图</label></div>' + targetPreview + '</div><form id="intakeForm" class="card form"><div class="field"><label for="description">发生了什么？ <button type="button" class="voice-btn" data-action="voice">◉ 语音描述</button></label><textarea id="description" maxlength="500" placeholder="例如：跟着教程做到第三步，奶油突然变成颗粒了">' + esc(visit.description || '') + '</textarea></div><div class="field"><label for="target">你原本想做成什么？</label><input id="target" value="' + esc(visit.target || '') + '" placeholder="目标结果（建议填写）"></div><div class="field two-fields"><div><label for="sourceUrl">关联原教程</label><input id="sourceUrl" value="' + esc(visit.sourceUrl || '') + '" placeholder="教程链接或作品标识"></div><div><label for="sourceTime">翻车发生时间点</label><input id="sourceTime" value="' + esc(visit.sourceTime || '') + '" placeholder="例如 00:36 / 第3步"></div></div><div class="field"><label for="constraints">现实约束</label><input id="constraints" value="' + esc(visit.constraints || '') + '" placeholder="时间、材料、预算、是否愿意重做…"></div><div class="truth-note">' + esc(analysisServiceNote()) + '</div><button class="btn primary full" type="submit">送往 AI 鉴定室</button></form></section>')
+    const hall = activeHall(), themedCopy = hall && hall.id === 'kitchen'
+    app.innerHTML = shell(progress(0) + hallContextRibbon('新展接待处 · 第 1 站') + '<section class="page-head"><div class="eyebrow">' + (themedCopy ? 'Kitchen Intake · New Exhibit' : 'New Exhibit') + '</div><h1 class="page-title" data-page-title tabindex="-1">' + (themedCopy ? '把厨房翻车送进馆里' : '提交翻车现场') + '</h1><p class="lead">视觉表达当前结果，目标图表达想做到的状态，文字或语音补充过程和约束。</p></section><section class="intake-layout"><div><div class="card upload">' + media + '</div><div class="capture-tools"><span>' + (visit.region ? '已记录异常区域' : '图片可拖动框选异常区域') + '</span><label class="btn ghost"><input class="visually-hidden-file" id="targetInput" type="file" accept="image/png,image/jpeg">＋ 添加目标效果图</label></div>' + targetPreview + '</div><form id="intakeForm" class="card form"><div class="field"><label for="description">发生了什么？ <button type="button" class="voice-btn" data-action="voice">◉ 语音描述</button></label><textarea id="description" maxlength="500" placeholder="例如：跟着教程做到第三步，奶油突然变成颗粒了">' + esc(visit.description || '') + '</textarea></div><div class="field"><label for="target">你原本想做成什么？</label><input id="target" value="' + esc(visit.target || '') + '" placeholder="目标结果（建议填写）"></div><div class="field two-fields"><div><label for="sourceUrl">关联原教程</label><input id="sourceUrl" value="' + esc(visit.sourceUrl || '') + '" placeholder="教程链接或作品标识"></div><div><label for="sourceTime">翻车发生时间点</label><input id="sourceTime" value="' + esc(visit.sourceTime || '') + '" placeholder="例如 00:36 / 第3步"></div></div><div class="field"><label for="constraints">现实约束</label><input id="constraints" value="' + esc(visit.constraints || '') + '" placeholder="时间、材料、预算、是否愿意重做…"></div><div class="truth-note">' + esc(analysisServiceNote()) + '</div><button class="btn primary full" type="submit">送往 AI 鉴定室</button></form></section>')
   }
 
   function regionStyle(region) {
@@ -89,11 +143,13 @@
   }
 
   function renderPending() {
-    app.innerHTML = shell(progress(1) + '<section class="page-head"><div class="eyebrow">Appraisal Pending</div><h1 class="page-title">等待真实分析服务</h1></section><section class="analysis-grid"><aside class="card exhibit"><img src="' + state.visit.image + '" alt="待分析现场"><div class="exhibit-info"><div class="case-meta">本地自选图片</div><div class="exhibit-name">尚未生成失败指纹</div></div></aside><div class="card panel"><div class="section-title">为什么没有直接给答案？</div><p class="lead">当前没有配置视觉模型与案例检索服务。这张图片没有被强行套用眼线、小屋或奶油的结论。</p><div class="truth-note">在右上角“服务设置”中填写本地或远程 API 地址，或先返回浏览当前馆藏。</div><div class="button-row"><button class="btn secondary" data-page="intake">返回补充信息</button><button class="btn primary" data-page="halls">浏览馆藏案例</button></div></div></section>')
+    if (!state.visit) { go('intake', { replace: true }); return }
+    app.innerHTML = shell(progress(1) + hallContextRibbon('鉴定室 · 等待分析') + '<section class="page-head"><div class="eyebrow">Appraisal Pending</div><h1 class="page-title" data-page-title tabindex="-1">等待真实分析服务</h1></section><section class="analysis-grid"><aside class="card exhibit"><img src="' + state.visit.image + '" alt="待分析现场"><div class="exhibit-info"><div class="case-meta">本地自选图片</div><div class="exhibit-name">尚未生成失败指纹</div></div></aside><div class="card panel"><div class="section-title">为什么没有直接给答案？</div><p class="lead">当前没有配置视觉模型与案例检索服务。这张图片没有被强行套用眼线、小屋或奶油的结论。</p><div class="truth-note">在右上角“服务设置”中填写本地或远程 API 地址，或先返回浏览当前馆藏。</div><div class="button-row"><button class="btn secondary" data-page="intake">返回补充信息</button><button class="btn primary" data-page="halls">浏览馆藏案例</button></div></div></section>')
   }
 
   function renderDiagnosis() {
-    if (!state.visit || state.visit.mode === 'pending') { renderPending(); return }
+    if (!state.visit) { go('intake', { replace: true }); return }
+    if (state.visit.mode === 'pending') { renderPending(); return }
     const item = state.visit.analysis
     const fingerprint = [['目标对象', item.target], ['当前阶段', item.stage], ['异常形态', item.anomaly], ['异常区域', item.area], ['严重程度', item.severity], ['可逆程度', item.reversible]]
     const fps = fingerprint.map(function (row) { return '<div class="fp-row"><span>' + row[0] + '</span><strong>' + esc(row[1]) + '</strong></div>' }).join('')
@@ -111,35 +167,37 @@
     }).join('')
     const douyinPanel = state.visit.mode !== 'online' ? '' : '<section class="card panel"><div class="section-head mini"><div><div class="section-title">抖音参考作品</div><div class="caption">关键词检索：' + esc(state.douyinKeyword || item.shortName || '') + '</div></div></div>' + (state.douyinLoading ? '<div class="truth-note">正在检索真实抖音作品…</div>' : state.douyinError ? '<div class="warning">' + esc(state.douyinError) + '</div>' : douyinCards ? '<div class="douyin-grid">' + douyinCards + '</div><div class="truth-note">这些是关键词检索结果，不等同于视觉相似度排序或经过验证的抢救案例。</div>' : '<div class="truth-note">当前关键词没有返回可展示的真实作品。</div>') + '</section>'
     const exhibitMedia = state.visit.mediaType === 'video' ? '<video src="' + state.visit.image + '" controls playsinline style="width:100%;height:390px;object-fit:contain;display:block;background:#171512"></video>' : '<img src="' + state.visit.image + '" alt="' + esc(item.shortName || item.name) + '">'
-    app.innerHTML = shell(progress(1) + '<section class="page-head"><div class="eyebrow">Appraisal Room · AI</div><h1 class="page-title">失败鉴定报告</h1></section><section class="analysis-grid"><aside class="card exhibit sticky">' + exhibitMedia + '<div class="exhibit-info"><div class="case-meta"><span>' + esc(item.hall || '待分类') + '</span><span>' + (state.visit.mode === 'builtin' ? '馆藏案例' : '在线分析') + '</span></div><div class="exhibit-name">' + esc(item.name || item.shortName) + '</div></div></aside><div><section class="card panel"><div class="section-title">失败指纹</div>' + aiMeta + fps + detectionNote + (item.safety ? '<div class="warning">安全提示：' + esc(item.safety) + '</div>' : '') + '</section>' + mediaEvidencePanel + '<section class="card panel"><div class="section-title">原因假设</div>' + hypotheses + '</section><section class="card panel question"><div class="eyebrow">关键追问</div><div class="question-copy">' + esc(item.question) + '</div><div class="button-row"><button class="btn secondary" data-answer="yes">可以 / 是</button><button class="btn secondary" data-answer="no">不可以 / 否</button></div>' + (item.followUpResult ? '<div class="verify-result"><b>判断已更新</b><br>' + esc(item.followUpResult) + '</div>' : '') + '</section><section class="card panel"><div class="section-title">同款翻车</div><div class="tabs">' + ['长得最像', '经历最像', '最值得参考'].map(function (name, index) { return '<button class="tab ' + (state.matchTab === index ? 'active' : '') + '" data-tab="' + index + '">' + name + '</button>' }).join('') + '</div>' + matchHtml + '<div class="truth-note">只显示当前案例库或分析服务实际返回的结果，不展示虚构馆藏总数。</div></section>' + douyinPanel + '<button class="btn primary full" data-page="action">查看四条处置路线</button></div></section>')
+    app.innerHTML = shell(progress(1) + hallContextRibbon('AI 鉴定室 · 第 2 站') + '<section class="page-head"><div class="eyebrow">Appraisal Room · AI</div><h1 class="page-title" data-page-title tabindex="-1">失败鉴定报告</h1></section><section class="analysis-grid"><aside class="card exhibit sticky">' + exhibitMedia + '<div class="exhibit-info"><div class="case-meta"><span>' + esc(item.hall || '待分类') + '</span><span>' + (state.visit.mode === 'builtin' ? '馆藏案例' : '在线分析') + '</span></div><div class="exhibit-name">' + esc(item.name || item.shortName) + '</div></div></aside><div><section class="card panel"><div class="section-title">失败指纹</div>' + aiMeta + fps + detectionNote + (item.safety ? '<div class="warning">安全提示：' + esc(item.safety) + '</div>' : '') + '</section>' + mediaEvidencePanel + '<section class="card panel"><div class="section-title">原因假设</div>' + hypotheses + '</section><section class="card panel question"><div class="eyebrow">关键追问</div><div class="question-copy">' + esc(item.question) + '</div><div class="button-row"><button class="btn secondary" data-answer="yes">可以 / 是</button><button class="btn secondary" data-answer="no">不可以 / 否</button></div>' + (item.followUpResult ? '<div class="verify-result"><b>判断已更新</b><br>' + esc(item.followUpResult) + '</div>' : '') + '</section><section class="card panel"><div class="section-title">同款翻车</div><div class="tabs">' + ['长得最像', '经历最像', '最值得参考'].map(function (name, index) { return '<button class="tab ' + (state.matchTab === index ? 'active' : '') + '" data-tab="' + index + '">' + name + '</button>' }).join('') + '</div>' + matchHtml + '<div class="truth-note">只显示当前案例库或分析服务实际返回的结果，不展示虚构馆藏总数。</div></section>' + douyinPanel + '<button class="btn primary full" data-page="action">查看四条处置路线</button></div></section>')
   }
 
   function renderAction() {
     const item = state.visit && state.visit.analysis
-    if (!item || !item.routes) { go('home'); return }
+    if (!item || !item.routes) { go('home', { replace: true }); return }
     if (!state.selectedRoute) {
       const recommended = Object.keys(item.routes).filter(function (key) { return item.routes[key].recommended })[0]
       state.selectedRoute = recommended || 'rescue'
     }
     const cards = Object.keys(routesMeta).map(function (key) {
       const meta = routesMeta[key], route = item.routes[key] || { summary: '', steps: [] }
-      return '<article class="card route ' + (state.selectedRoute === key ? 'selected' : '') + '" data-route="' + key + '"><div class="route-top"><span class="route-icon">' + meta.icon + '</span>' + (route.recommended ? '<span class="recommend">AI 建议</span>' : '') + '</div><h3>' + meta.name + '</h3><small>' + meta.desc + '</small><p>' + esc(route.summary) + '</p></article>'
+      return '<button type="button" class="card route route-button ' + (state.selectedRoute === key ? 'selected' : '') + '" data-route="' + key + '" aria-pressed="' + (state.selectedRoute === key ? 'true' : 'false') + '"><span class="route-top"><span class="route-icon">' + meta.icon + '</span>' + (route.recommended ? '<span class="recommend">AI 建议</span>' : '') + '</span><span class="route-name">' + meta.name + '</span><small>' + meta.desc + '</small><span class="route-summary">' + esc(route.summary) + '</span></button>'
     }).join('')
     const selected = item.routes[state.selectedRoute]
     const steps = selected.steps.map(function (step, index) { return '<div class="step-line"><b>' + (index + 1) + '</b><div>' + esc(step) + '</div></div>' }).join('')
-    app.innerHTML = shell(progress(2) + '<section class="page-head"><div class="eyebrow">Disposition</div><h1 class="page-title">这次，怎么处理？</h1><p class="lead">不是所有失败都要强行救回原样。根据可逆性、风险与成本选择路线。</p></section><section class="route-grid">' + cards + '</section><section class="card route-details"><div class="eyebrow">' + routesMeta[state.selectedRoute].name + '路线预览</div>' + steps + '</section><div style="margin-top:18px"><button class="btn primary full" data-page="coach">进入分步陪练</button></div>')
+    app.innerHTML = shell(progress(2) + hallContextRibbon('处置陈列室 · 第 3 站') + '<section class="page-head"><div class="eyebrow">Disposition</div><h1 class="page-title" data-page-title tabindex="-1">这次，怎么处理？</h1><p class="lead">不是所有失败都要强行救回原样。根据可逆性、风险与成本选择路线。</p></section><section class="route-grid" role="group" aria-label="选择处置路线">' + cards + '</section><section class="card route-details"><div class="eyebrow">' + routesMeta[state.selectedRoute].name + '路线预览</div>' + steps + '</section><div style="margin-top:18px"><button class="btn primary full" data-page="coach">进入分步陪练</button></div>')
   }
 
   function renderCoach() {
-    const item = state.visit.analysis, route = item.routes[state.selectedRoute]
+    const item = state.visit && state.visit.analysis, route = item && item.routes && item.routes[state.selectedRoute]
+    if (!route) { go(item && item.routes ? 'action' : 'home', { replace: true }); return }
     if (state.currentStep >= route.steps.length) { renderFinish(); return }
     const width = ((state.currentStep + 1) / route.steps.length * 100).toFixed(1)
-    app.innerHTML = shell(progress(2) + '<section class="coach"><section class="page-head"><div class="eyebrow">Live Conservation</div><h1 class="page-title">现场陪练 <small>' + (state.currentStep + 1) + ' / ' + route.steps.length + '</small></h1><div class="progress"><i style="width:' + width + '%"></i></div></section><article class="card current-step"><div class="eyebrow">当前步骤 ' + (state.currentStep + 1) + '</div><div class="current-copy">' + esc(route.steps[state.currentStep]) + '</div>' + (item.safety ? '<div class="warning">' + esc(item.safety) + '</div>' : '') + '</article><article class="card verify"><h3>做完后，拍一下当前状态</h3><p class="caption">未接服务时仅供人工复核，不显示虚假 AI 通过。</p><label class="photo-check"><input id="checkInput" type="file" accept="image/png,image/jpeg" capture="environment" hidden>' + (state.checkImage ? '<img src="' + state.checkImage + '" alt="复查图片">' : '<div><div style="font-size:42px;color:var(--red)">◎</div><div>拍摄 / 选择复查图片</div></div>') + '</label><button class="btn secondary full" data-action="verify">验证当前状态</button>' + (state.verifyResult ? '<div class="verify-result"><b>' + esc(state.verifyResult.title) + '</b><br>' + esc(state.verifyResult.message) + '</div>' : '') + '</article><div class="button-row" style="margin-top:17px"><button class="btn ghost" data-action="prev-step" ' + (state.currentStep === 0 ? 'disabled' : '') + '>上一步</button><button class="btn primary" style="flex:1" data-action="next-step">我已确认，下一步</button></div></section>')
+    app.innerHTML = shell(progress(2) + hallContextRibbon('现场修复室 · 第 3 站') + '<section class="coach"><section class="page-head"><div class="eyebrow">Live Conservation</div><h1 class="page-title" data-page-title tabindex="-1">现场陪练 <small>' + (state.currentStep + 1) + ' / ' + route.steps.length + '</small></h1><div class="progress"><i style="width:' + width + '%"></i></div></section><article class="card current-step"><div class="eyebrow">当前步骤 ' + (state.currentStep + 1) + '</div><div class="current-copy">' + esc(route.steps[state.currentStep]) + '</div>' + (item.safety ? '<div class="warning">' + esc(item.safety) + '</div>' : '') + '</article><article class="card verify"><h3>做完后，拍一下当前状态</h3><p class="caption">未接服务时仅供人工复核，不显示虚假 AI 通过。</p><label class="photo-check"><input class="visually-hidden-file" id="checkInput" type="file" accept="image/png,image/jpeg" capture="environment">' + (state.checkImage ? '<img src="' + state.checkImage + '" alt="复查图片">' : '<div><div style="font-size:42px;color:var(--red)">◎</div><div>拍摄 / 选择复查图片</div></div>') + '</label><button class="btn secondary full" data-action="verify">验证当前状态</button>' + (state.verifyResult ? '<div class="verify-result"><b>' + esc(state.verifyResult.title) + '</b><br>' + esc(state.verifyResult.message) + '</div>' : '') + '</article><div class="button-row" style="margin-top:17px"><button class="btn ghost" data-action="prev-step" ' + (state.currentStep === 0 ? 'disabled' : '') + '>上一步</button><button class="btn primary" style="flex:1" data-action="next-step">我已确认，下一步</button></div></section>')
   }
 
   function renderFinish() {
-    const item = state.visit.analysis, route = item.routes[state.selectedRoute]
-    app.innerHTML = shell(progress(3) + '<section class="coach"><article class="card finish"><div class="seal">藏</div><h1 class="page-title">处理步骤完成</h1><p class="lead" style="margin:auto">是否真正抢救成功由你决定。归档只记录“完成步骤”，不会自动宣称成功。</p><div class="card panel" style="text-align:left;margin-top:25px"><div class="fp-row"><span>展品</span><strong>' + esc(item.name || item.shortName) + '</strong></div><div class="fp-row"><span>处置路线</span><strong>' + routesMeta[state.selectedRoute].name + '</strong></div><div class="fp-row"><span>视觉复核</span><strong>' + (state.verifyResult && !state.verifyResult.offline ? '已在线复核' : '未在线复核') + '</strong></div></div><button class="btn primary full" data-action="archive">收入我的馆藏</button></article></section>')
+    const item = state.visit && state.visit.analysis, route = item && item.routes && item.routes[state.selectedRoute]
+    if (!route) { go(item && item.routes ? 'action' : 'home', { replace: true }); return }
+    app.innerHTML = shell(progress(3) + hallContextRibbon('归档室 · 第 4 站') + '<section class="coach"><article class="card finish"><div class="seal">藏</div><h1 class="page-title" data-page-title tabindex="-1">处理步骤完成</h1><p class="lead" style="margin:auto">是否真正抢救成功由你决定。归档只记录“完成步骤”，不会自动宣称成功。</p><div class="card panel" style="text-align:left;margin-top:25px"><div class="fp-row"><span>展品</span><strong>' + esc(item.name || item.shortName) + '</strong></div><div class="fp-row"><span>处置路线</span><strong>' + routesMeta[state.selectedRoute].name + '</strong></div><div class="fp-row"><span>视觉复核</span><strong>' + (state.verifyResult && !state.verifyResult.offline ? '已在线复核' : '未在线复核') + '</strong></div></div><button class="btn primary full" data-action="archive">收入我的馆藏</button></article></section>')
   }
 
   function buildContent(item, templateId) {
@@ -168,9 +226,9 @@
 
   function renderResult() {
     const item = state.visit && state.visit.analysis
-    if (!item) { go('home'); return }
+    if (!item) { go('home', { replace: true }); return }
     const route = item.routes[state.selectedRoute]
-    const hallId = platform.hallByCase[item.id] || 'craft'
+    const hallId = resolveHallIdFromVisit(state.visit)
     const services = platform.serviceCatalog[hallId] || { tools: [], course: '等待馆长补充对应课程', localService: '可以发布服务需求，等待真实服务方接入。' }
     const tabs = [['archive', '馆藏档案'], ['report', '复盘报告'], ['content', '生成内容'], ['service', '工具与服务']]
     let content = ''
@@ -187,7 +245,7 @@
       const tools = services.tools.map(function (tool) { return '<article class="tool-row"><div><b>' + esc(tool.name) + '</b><span>' + esc(tool.type) + '</span><p>' + esc(tool.reason) + '</p></div><button class="btn ghost" data-tool="' + esc(tool.name) + '">加入清单</button></article>' }).join('')
       content = '<div class="service-grid"><article class="card panel"><div class="eyebrow">Tools & materials</div><div class="section-title">确认诊断后再推荐</div>' + tools + '</article><article class="card panel"><div class="eyebrow">Course</div><div class="section-title">对应课程</div><p>' + esc(services.course) + '</p><button class="btn secondary" data-action="save-course">保存到学习清单</button></article><article class="card panel"><div class="eyebrow">Local service</div><div class="section-title">发布本地服务需求</div><p>' + esc(services.localService) + '</p><form id="serviceForm"><input id="serviceCity" placeholder="所在城市（可选）"><textarea id="serviceNeed" placeholder="描述需要真人协助的部分"></textarea><button class="btn primary full">保存服务需求</button></form></article><article class="card panel"><div class="eyebrow">Commercial boundary</div><div class="section-title">推荐边界</div><p>当前不展示虚构商家、价格、销量或距离。真实商家目录、课程和商品需由后端返回，并标注广告与合作关系。</p></article></div>'
     }
-    app.innerHTML = shell(progress(3) + '<section class="page-head"><div class="eyebrow">Exhibit Result</div><h1 class="page-title">处理结果与馆藏</h1><p class="lead">从解决问题继续走向复盘、传播、社区与服务。</p></section><div class="result-tabs">' + tabs.map(function (tab) { return '<button class="' + (state.resultTab === tab[0] ? 'active' : '') + '" data-result-tab="' + tab[0] + '">' + tab[1] + '</button>' }).join('') + '</div>' + content)
+    app.innerHTML = shell(progress(3) + hallContextRibbon('馆藏档案室 · 第 4 站') + '<section class="page-head"><div class="eyebrow">Exhibit Result</div><h1 class="page-title" data-page-title tabindex="-1">处理结果与馆藏</h1><p class="lead">从解决问题继续走向复盘、传播、社区与服务。</p></section><div class="result-tabs">' + tabs.map(function (tab) { return '<button class="' + (state.resultTab === tab[0] ? 'active' : '') + '" data-result-tab="' + tab[0] + '">' + tab[1] + '</button>' }).join('') + '</div>' + content)
   }
 
   function seedPosts() {
@@ -218,7 +276,7 @@
       feed = filtered.length ? '<div class="community-grid">' + filtered.map(function (post) { return '<article class="card post"><img src="' + post.image + '" alt="' + esc(post.title) + '"><div class="post-body"><div class="case-meta"><span>' + esc(post.hall) + '</span><span>' + esc(post.createdAt) + '</span></div><h3>' + esc(post.title) + '</h3><p>' + esc(post.content) + '</p><div class="fingerprint-label">失败指纹 · ' + esc(post.fingerprint || '待鉴定') + '</div><div class="post-foot"><span>由 ' + esc(post.author) + ' 提交</span><button data-comment="' + post.id + '">会诊 ' + (post.comments || []).length + '</button></div></div></article>' }).join('') + '</div>' : '<div class="card empty"><div class="empty-icon">◇</div><div class="section-title">这里还没有真实内容</div><p class="lead" style="margin:12px auto">排行和抢救成功区不会用假互动填满。发布或完成一次真实流程后会出现在这里。</p></div>'
     }
     const sectionTabs = platform.communitySections.map(function (section) { return '<button class="community-tab ' + (state.communityTab === section.id ? 'active' : '') + '" data-community-tab="' + section.id + '"><b>' + section.name + '</b><span>' + section.desc + '</span></button>' }).join('')
-    app.innerHTML = shell('<section class="page-head"><div class="eyebrow">Museum Community</div><h1 class="page-title">博物馆社区</h1><p class="lead">不按热闹程度堆普通帖子，而是围绕失败知识、诊断状态与处理结果组织内容。</p></section><div class="community-tabs">' + sectionTabs + '</div><section class="community-layout"><div>' + feed + '</div><aside class="card compose sticky"><div class="eyebrow">Submit exhibit</div><div class="section-title">发布一件新展</div><form id="communityForm"><input id="postTitle" required placeholder="展品名称"><select id="postHall">' + platform.halls.map(function (hall) { return '<option>' + hall.name + '</option>' }).join('') + '</select><input id="postFingerprint" placeholder="失败指纹，例如：眼尾角度不一致"><textarea id="postContent" required placeholder="发生了什么、做过哪些尝试？"></textarea><label class="file-pick"><input id="postImage" type="file" accept="image/png,image/jpeg" hidden>＋ 选择现场图片</label><button class="btn primary full">发布到今日新展</button></form><div class="truth-note">所有发布内容只保存在当前浏览器；接入账号、审核和云端数据库后才能形成真实多人社区。</div></aside></section>')
+    app.innerHTML = shell('<section class="page-head"><div class="eyebrow">Museum Community</div><h1 class="page-title">博物馆社区</h1><p class="lead">不按热闹程度堆普通帖子，而是围绕失败知识、诊断状态与处理结果组织内容。</p></section><div class="community-tabs">' + sectionTabs + '</div><section class="community-layout"><div>' + feed + '</div><aside class="card compose sticky"><div class="eyebrow">Submit exhibit</div><div class="section-title">发布一件新展</div><form id="communityForm"><input id="postTitle" required placeholder="展品名称"><select id="postHall">' + platform.halls.map(function (hall) { return '<option>' + hall.name + '</option>' }).join('') + '</select><input id="postFingerprint" placeholder="失败指纹，例如：眼尾角度不一致"><textarea id="postContent" required placeholder="发生了什么、做过哪些尝试？"></textarea><label class="file-pick"><input class="visually-hidden-file" id="postImage" type="file" accept="image/png,image/jpeg">＋ 选择现场图片</label><button class="btn primary full">发布到今日新展</button></form><div class="truth-note">所有发布内容只保存在当前浏览器；接入账号、审核和云端数据库后才能形成真实多人社区。</div></aside></section>')
   }
 
   function creatorProfile() { try { return JSON.parse(localStorage.getItem('museum_curator_profile') || 'null') } catch (_) { return null } }
@@ -237,15 +295,39 @@
   function collections() { try { return JSON.parse(localStorage.getItem('museum_collections_web') || '[]') } catch (_) { return [] } }
   function renderCollection() {
     const records = collections()
-    let body = '<section class="page-head"><div class="eyebrow">My Archive</div><h1 class="page-title">我的馆藏</h1><p class="lead">' + records.length + ' 件保存在当前浏览器中的展品。</p></section>'
+    let body = hallContextRibbon('个人归档柜') + '<section class="page-head"><div class="eyebrow">My Archive</div><h1 class="page-title" data-page-title tabindex="-1">我的馆藏</h1><p class="lead">' + records.length + ' 件保存在当前浏览器中的展品。</p></section>'
     if (!records.length) body += '<section class="card empty"><div class="empty-icon">□</div><div class="section-title">展柜还是空的</div><p class="lead" style="margin:12px auto 28px">完成一次处置流程后，展品会保存在本地。</p><button class="btn primary" data-page="intake">收下第一件翻车</button></section>'
     else body += '<section class="archive-grid">' + records.map(function (record) { return '<article class="card archive"><img src="' + record.image + '" alt="' + esc(record.name) + '"><div class="archive-body"><div class="case-meta"><span>' + esc(record.hall) + '</span><span>' + esc(record.createdAt) + '</span></div><div class="case-name">' + esc(record.name) + '</div><p>处理路线 · ' + esc(record.routeName) + '</p><span class="status">' + (record.verified ? '已通过在线视觉复核' : '用户完成步骤，未在线复核') + '</span><div style="margin-top:16px"><button class="btn ghost" data-delete="' + record.recordId + '">移出馆藏</button></div></div></article>' }).join('') + '</section><div style="margin-top:22px"><button class="btn primary" data-page="intake">继续入馆</button></div>'
     app.innerHTML = shell(body)
   }
 
+  let hallDoorTimer = null
+  function clearHallTransition() {
+    if (hallDoorTimer) clearTimeout(hallDoorTimer)
+    hallDoorTimer = null; state.enteringHall = false
+  }
+  function parseRoute(value) {
+    const raw = String(value || '').replace(/^#/, '').replace(/^\//, '') || 'home'
+    const parts = raw.split('/').filter(Boolean), root = parts[0], hallId = parts[1] || ''
+    const hall = hallById(hallId)
+    if (root === 'hall' && hall && hall.theme && hall.status === 'open') return { page: 'hall', hallId: hall.id, canonical: 'hall/' + hall.id }
+    if (root === 'halls' && hall) return { page: 'halls', hallId: hall.id, canonical: 'halls/' + hall.id }
+    if (root === 'halls' && !hallId) return { page: 'halls', hallId: '', canonical: 'halls' }
+    if (['home', 'intake', 'diagnosis', 'action', 'coach', 'finish', 'result', 'community', 'curator', 'collection'].indexOf(root) >= 0 && parts.length === 1) return { page: root, hallId: '', canonical: root }
+    return { page: 'home', hallId: '', canonical: 'home', invalid: true }
+  }
+  function applyRoute(route) {
+    clearHallTransition()
+    state.page = route.page; state.routeHallId = route.hallId || ''
+    if (route.page === 'halls') state.hallId = route.hallId || 'all'
+    if (route.page === 'hall') state.hallId = route.hallId
+  }
+
   function render() {
+    applyDocumentTheme()
     window.scrollTo({ top: 0, behavior: 'instant' })
     if (state.page === 'home') renderHome()
+    else if (state.page === 'hall') renderHallEntrance()
     else if (state.page === 'halls') renderHalls()
     else if (state.page === 'intake') renderIntake()
     else if (state.page === 'diagnosis') renderDiagnosis()
@@ -256,8 +338,22 @@
     else if (state.page === 'community') renderCommunity()
     else if (state.page === 'curator') renderCurator()
     else if (state.page === 'collection') renderCollection()
+    else renderHome()
+    if (state.focusPageTitle) {
+      const heading = app.querySelector('[data-page-title], h1')
+      if (heading) { if (!heading.hasAttribute('tabindex')) heading.tabIndex = -1; heading.focus({ preventScroll: true }) }
+      state.focusPageTitle = false
+    }
   }
-  function go(page) { state.page = page; history.pushState({ page: page }, '', '#' + page); render() }
+  function go(target, options) {
+    const route = parseRoute(target)
+    state.collectionHallId = route.page === 'collection' && options && options.collectionHallId ? options.collectionHallId : ''
+    state.focusPageTitle = true
+    applyRoute(route)
+    const method = options && options.replace ? 'replaceState' : 'pushState'
+    history[method]({ page: route.page, hallId: route.hallId, collectionHallId: state.collectionHallId }, '', '#' + route.canonical)
+    render()
+  }
 
   function resizeImage(file) {
     return new Promise(function (resolve, reject) {
@@ -452,24 +548,48 @@
     if (line) ctx.fillText(line, x, y)
   }
 
+  function resetVisit(hallId) {
+    state.visit = null; state.entryHallId = hallId || ''; state.selectedRoute = ''; state.currentStep = 0
+    state.collectionHallId = ''; state.checkImage = ''; state.verifyResult = null; state.videoJob = null
+  }
+  function startHallEntrance(hallId, button) {
+    if (state.enteringHall) return
+    const hall = hallById(hallId), gateway = button && button.closest('.hall-gateway')
+    if (!hall || !hall.theme || !gateway) return
+    state.enteringHall = true; button.disabled = true; gateway.classList.add('is-entering')
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    hallDoorTimer = setTimeout(function () {
+      hallDoorTimer = null; state.enteringHall = false; state.entryHallId = hall.id; state.focusPageTitle = true
+      go('halls/' + hall.id)
+    }, reduced ? 20 : 700)
+  }
+
   app.addEventListener('click', function (event) {
     const pageButton = event.target.closest('[data-page]')
     if (pageButton) {
       if (pageButton.dataset.communityTab) state.communityTab = pageButton.dataset.communityTab
       if (pageButton.dataset.page === 'intake' && state.page !== 'diagnosis') {
-        state.visit = null; state.selectedRoute = ''; state.currentStep = 0; state.checkImage = ''; state.verifyResult = null; state.videoJob = null
+        resetVisit(activeHallId())
       }
       go(pageButton.dataset.page); return
     }
+    const themedIntake = event.target.closest('[data-themed-intake]')
+    if (themedIntake) { resetVisit(themedIntake.dataset.themedIntake); go('intake'); return }
+    const enterHall = event.target.closest('[data-enter-hall]')
+    if (enterHall) { go('hall/' + enterHall.dataset.enterHall); return }
+    const browseHall = event.target.closest('[data-browse-hall]')
+    if (browseHall) { const id = browseHall.dataset.browseHall; go(id === 'all' ? 'halls' : 'halls/' + id); return }
+    const door = event.target.closest('[data-enter-door]')
+    if (door) { startHallEntrance(door.dataset.enterDoor, door); return }
     const card = event.target.closest('[data-case]')
     if (card) {
       const item = window.MuseumCases.getCase(card.dataset.case)
-      state.visit = { mode: 'builtin', caseId: item.id, image: '..' + item.image, description: item.shortName, target: item.target, constraints: '', analysis: JSON.parse(JSON.stringify(item)) }
+      const hallId = platform.hallByCase[item.id] || ''
+      state.entryHallId = hallId
+      state.visit = { mode: 'builtin', caseId: item.id, entryHallId: hallId, image: '..' + item.image, description: item.shortName, target: item.target, constraints: '', analysis: JSON.parse(JSON.stringify(item)) }
       state.selectedRoute = ''; state.currentStep = 0; state.checkImage = ''; state.verifyResult = null; state.videoJob = null
       go('intake'); return
     }
-    const hall = event.target.closest('[data-hall]')
-    if (hall) { state.hallId = hall.dataset.hall; go('halls'); return }
     const scroller = event.target.closest('[data-scroll]')
     if (scroller) { document.getElementById(scroller.dataset.scroll).scrollIntoView({ behavior: 'smooth' }); return }
     const tab = event.target.closest('[data-tab]')
@@ -499,13 +619,13 @@
   app.addEventListener('change', function (event) {
     if (event.target.id === 'videoTemplate') { state.videoTemplate = event.target.value; state.videoJob = null; renderResult(); return }
     if (event.target.id === 'imageInput' && event.target.files[0]) {
-      const file = event.target.files[0]
+      const file = event.target.files[0], entryHallId = activeHallId() || state.entryHallId || ''
       if (file.type.indexOf('video/') === 0) {
-        state.visit = { mode: 'local', image: URL.createObjectURL(file), rawFile: file, mediaType: 'video', description: '', target: '', constraints: '' }
+        state.visit = { mode: 'local', entryHallId: entryHallId, image: URL.createObjectURL(file), rawFile: file, mediaType: 'video', description: '', target: '', constraints: '' }
         state.selectedRoute = ''; state.currentStep = 0; state.checkImage = ''; state.verifyResult = null; state.videoJob = null; renderIntake()
-      } else resizeImage(file).then(function (image) { state.visit = { mode: 'local', image: image, mediaType: 'image', description: '', target: '', constraints: '' }; state.selectedRoute = ''; state.currentStep = 0; state.checkImage = ''; state.verifyResult = null; state.videoJob = null; renderIntake() }).catch(function (error) { toast(error.message) })
+      } else resizeImage(file).then(function (image) { state.visit = { mode: 'local', entryHallId: entryHallId, image: image, mediaType: 'image', description: '', target: '', constraints: '' }; state.selectedRoute = ''; state.currentStep = 0; state.checkImage = ''; state.verifyResult = null; state.videoJob = null; renderIntake() }).catch(function (error) { toast(error.message) })
     }
-    if (event.target.id === 'targetInput' && event.target.files[0]) resizeImage(event.target.files[0]).then(function (image) { if (!state.visit) state.visit = { mode: 'local', image: '', description: '', target: '', constraints: '' }; state.visit.targetImage = image; renderIntake() }).catch(function (error) { toast(error.message) })
+    if (event.target.id === 'targetInput' && event.target.files[0]) resizeImage(event.target.files[0]).then(function (image) { if (!state.visit) state.visit = { mode: 'local', entryHallId: activeHallId() || state.entryHallId || '', image: '', description: '', target: '', constraints: '' }; state.visit.targetImage = image; renderIntake() }).catch(function (error) { toast(error.message) })
     if (event.target.id === 'postImage' && event.target.files[0]) resizeImage(event.target.files[0]).then(function (image) { state.pendingPostImage = image; toast('社区图片已选择') }).catch(function (error) { toast(error.message) })
     if (event.target.id === 'checkInput' && event.target.files[0]) {
       resizeImage(event.target.files[0]).then(function (image) { state.checkImage = image; state.verifyResult = null; renderCoach() }).catch(function (error) { toast(error.message) })
@@ -541,7 +661,8 @@
       const complete = state.currentStep >= state.visit.analysis.routes[state.selectedRoute].steps.length
       state.checkImage = ''
       if (!complete) state.verifyResult = null
-      state.page = complete ? 'result' : 'coach'; render()
+      if (complete) { state.currentStep = Math.max(0, state.currentStep - 1); go('result') }
+      else renderCoach()
     }
     if (action === 'verify') {
       if (!state.checkImage) { toast('请先拍摄或选择当前状态'); return }
@@ -552,7 +673,7 @@
     if (action === 'archive') {
       const item = state.visit.analysis, now = new Date(), records = collections()
       records.unshift({ recordId: 'web-' + Date.now(), caseId: item.id || '', name: item.name || item.shortName || '未命名展品', hall: item.hall || '待分类展馆', image: state.visit.image, routeName: routesMeta[state.selectedRoute].name, verified: Boolean(state.verifyResult && !state.verifyResult.offline), createdAt: now.toLocaleDateString('zh-CN') })
-      try { localStorage.setItem('museum_collections_web', JSON.stringify(records.slice(0, 20))); state.currentStep = 0; state.selectedRoute = ''; state.checkImage = ''; go('collection'); toast('已收入本地馆藏') } catch (_) { toast('图片较大，本地存储空间不足') }
+      try { localStorage.setItem('museum_collections_web', JSON.stringify(records.slice(0, 20))); state.currentStep = 0; state.checkImage = ''; go('collection', { collectionHallId: resolveHallIdFromVisit(state.visit) }); toast('已收入本地馆藏') } catch (_) { toast('图片较大，本地存储空间不足') }
     }
     if (action === 'publish-result') publishResult()
     if (action === 'poster') generatePoster()
@@ -561,7 +682,7 @@
       const script = buildContent(state.visit.analysis, state.contentTemplate)
       navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(script).then(function () { toast('脚本已复制') }) : toast('当前浏览器不支持自动复制，请手动选择文本')
     }
-    if (action === 'save-course') { addToList('museum_course_list', (platform.serviceCatalog[platform.hallByCase[state.visit.analysis.id]] || {}).course || '待补课程'); toast('已保存到学习清单') }
+    if (action === 'save-course') { addToList('museum_course_list', (platform.serviceCatalog[resolveHallIdFromVisit(state.visit)] || {}).course || '待补课程'); toast('已保存到学习清单') }
     if (action === 'voice') startVoiceInput()
   }
 
@@ -596,18 +717,41 @@
     regionDrag = null
   })
 
-  window.addEventListener('popstate', function () { state.page = location.hash.slice(1) || 'home'; render() })
-  state.page = location.hash.slice(1) || 'home'
+  let parallaxFrame = null
+  app.addEventListener('pointermove', function (event) {
+    const gateway = event.target.closest('.hall-gateway')
+    if (!gateway || !window.matchMedia('(hover: hover) and (pointer: fine)').matches || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const rect = gateway.getBoundingClientRect(), x = ((event.clientX - rect.left) / rect.width - .5) * 2, y = ((event.clientY - rect.top) / rect.height - .5) * 2
+    if (parallaxFrame) cancelAnimationFrame(parallaxFrame)
+    parallaxFrame = requestAnimationFrame(function () { gateway.style.setProperty('--parallax-x', x.toFixed(3)); gateway.style.setProperty('--parallax-y', y.toFixed(3)); parallaxFrame = null })
+  })
+
+  window.addEventListener('popstate', function (event) {
+    const route = parseRoute(location.hash)
+    state.collectionHallId = route.page === 'collection' && event.state ? event.state.collectionHallId || '' : ''
+    state.focusPageTitle = true
+    applyRoute(route)
+    if (route.invalid) history.replaceState({ page: 'home' }, '', '#home')
+    render()
+  })
+  const initialRoute = parseRoute(location.hash)
   const previewParams = new URLSearchParams(location.search)
   if (['archive', 'report', 'content', 'service'].indexOf(previewParams.get('tab')) >= 0) state.resultTab = previewParams.get('tab')
   if (previewParams.get('case')) {
     const previewCase = window.MuseumCases.getCase(previewParams.get('case'))
     if (previewCase) {
-      state.visit = { mode: 'builtin', caseId: previewCase.id, image: '..' + previewCase.image, description: previewCase.shortName, target: previewCase.target, constraints: '', analysis: JSON.parse(JSON.stringify(previewCase)) }
-      state.selectedRoute = previewParams.get('route') || Object.keys(previewCase.routes).filter(function (key) { return previewCase.routes[key].recommended })[0] || 'rescue'
-      if (previewParams.get('step')) state.currentStep = Math.max(0, Number(previewParams.get('step')) || 0)
+      const previewHallId = platform.hallByCase[previewCase.id] || ''
+      state.entryHallId = previewHallId
+      state.visit = { mode: 'builtin', caseId: previewCase.id, entryHallId: previewHallId, image: '..' + previewCase.image, description: previewCase.shortName, target: previewCase.target, constraints: '', analysis: JSON.parse(JSON.stringify(previewCase)) }
+      const previewRoute = previewParams.get('route'), recommendedRoute = Object.keys(previewCase.routes).filter(function (key) { return previewCase.routes[key].recommended })[0]
+      state.selectedRoute = previewRoute && previewCase.routes[previewRoute] ? previewRoute : recommendedRoute || 'rescue'
+      if (previewParams.get('step')) state.currentStep = Math.min(Math.max(0, previewCase.routes[state.selectedRoute].steps.length - 1), Math.max(0, Number(previewParams.get('step')) || 0))
     }
   }
+  if (initialRoute.page === 'collection') state.collectionHallId = (history.state && history.state.collectionHallId) || resolveHallIdFromVisit(state.visit)
+  applyRoute(initialRoute)
+  if (initialRoute.invalid) history.replaceState({ page: 'home', hallId: '', collectionHallId: '' }, '', '#home')
+  else if (initialRoute.page === 'collection') history.replaceState({ page: 'collection', hallId: '', collectionHallId: state.collectionHallId }, '', '#collection')
   render()
   if (!localStorage.getItem('museum_api_base')) {
     fetch('/api/v1/health').then(function (response) { if (!response.ok) throw new Error('no backend'); return response.json() }).then(function (health) {
