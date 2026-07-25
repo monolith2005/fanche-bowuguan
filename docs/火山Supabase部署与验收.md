@@ -31,3 +31,18 @@ python3 local_server.py
 - 断网或同步失败时，本地 `museum_collections_web` 不得被清空。
 
 官方参考：[火山引擎邮件登录配置](https://www.volcengine.com/docs/87275/2288737)、[火山引擎 Auth Hooks](https://www.volcengine.com/docs/87275/2482139)、[Supabase 邮箱 OTP](https://supabase.com/docs/reference/javascript/auth-signinwithotp)。
+
+## 5. Vercel 生产部署
+
+仓库已包含 `vercel.json` 和 `api/index.py`。Vercel 会托管 `web/`、`assets/` 等静态文件，并把 `/api/v1/*` 重写到 Python Function。
+
+在 Vercel Project 的 Production 环境变量中配置：
+
+- `ARK_API_KEY`：仅服务端可见，不要添加 `NEXT_PUBLIC_` 前缀。
+- `ARK_MODEL`、`ARK_IMAGE_MODEL`：可选；未设置时使用仓库默认模型。
+- `SUPABASE_URL`、`SUPABASE_ANON_KEY`：提供给浏览器初始化 Supabase 客户端。
+- `REDFOX_API_KEY`：可选；启用抖音检索时配置。
+
+不要把 Supabase `SERVICE_ROLE_KEY`、SMTP 密码或任何数据库密码配置到前端。部署完成后依次检查 `/api/v1/health`、`/api/v1/cloud-config` 和 `/web/`。
+
+Vercel Function 使用 `/tmp` 保存临时文件。FFmpeg 成片任务依赖常驻进程与持久磁盘，因此生产版中这项能力仍会显示为不可用；AI 分析、摆件生成和 Supabase 同步不受影响。

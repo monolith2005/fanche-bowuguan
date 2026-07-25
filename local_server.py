@@ -46,7 +46,8 @@ MAX_UPLOAD_BYTES = int(os.getenv("MUSEUM_MAX_UPLOAD_MB", "50")) * 1024 * 1024
 ANALYSES: dict[str, dict[str, Any]] = {}
 REDFOX_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
 REDFOX_CACHE_SECONDS = int(os.getenv("REDFOX_CACHE_SECONDS", "600"))
-VIDEO_JOBS = VideoJobManager(ROOT / "runtime" / "video_jobs")
+RUNTIME_ROOT = Path(os.getenv("MUSEUM_RUNTIME_DIR", str(ROOT / "runtime"))).resolve()
+VIDEO_JOBS = VideoJobManager(RUNTIME_ROOT / "video_jobs")
 
 
 class ApiError(Exception):
