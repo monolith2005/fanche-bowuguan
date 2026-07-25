@@ -40,6 +40,8 @@ ARK_MODEL = os.getenv("ARK_MODEL", "doubao-seed-2-0-lite-260428")
 ARK_IMAGE_MODEL = os.getenv("ARK_IMAGE_MODEL", "doubao-seedream-5-0-pro-260628")
 ARK_EXPLICIT_AUDIO = os.getenv("ARK_EXPLICIT_AUDIO", "").strip().lower() in {"1", "true", "yes"}
 REDFOX_BASE_URL = os.getenv("REDFOX_BASE_URL", "https://redfox.hk").rstrip("/")
+SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("SUPABASE_BASE_URL", "")).rstrip("/")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "").strip()
 MAX_UPLOAD_BYTES = int(os.getenv("MUSEUM_MAX_UPLOAD_MB", "50")) * 1024 * 1024
 ANALYSES: dict[str, dict[str, Any]] = {}
 REDFOX_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
@@ -880,6 +882,10 @@ class MuseumHandler(BaseHTTPRequestHandler):
                     "videoTemplates": [{"id": key, **value} for key, value in VIDEO_TEMPLATES.items()],
                 },
             )
+            return
+        if path == "/api/v1/cloud-config":
+            configured = bool(SUPABASE_URL and SUPABASE_ANON_KEY)
+            self.send_json(200, {"configured": configured, "url": SUPABASE_URL if configured else "", "anonKey": SUPABASE_ANON_KEY if configured else "", "provider": "volcengine-supabase"})
             return
         video_job_match = re.fullmatch(r"/api/v1/video-jobs/(video-[a-f0-9]{16})", path)
         if video_job_match:

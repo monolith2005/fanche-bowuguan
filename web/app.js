@@ -77,9 +77,9 @@
   function shell(content, options) {
     applyDocumentTheme()
     const hall = activeHall(), themed = hall && hall.theme, immersive = options && options.immersive
-    const hallActive = state.page === 'hall' || state.page === 'halls', communityActive = state.page === 'community', curatorActive = state.page === 'curator'
+    const hallActive = state.page === 'hall' || state.page === 'halls', communityActive = state.page === 'community', curatorActive = state.page === 'curator', accountActive = state.page === 'account'
     const shellClass = 'shell' + (themed ? ' theme-' + hall.id : '') + (immersive ? ' shell--immersive' : '')
-    return '<main class="' + shellClass + '"><header class="topbar"><button class="icon-btn brand" data-page="home"><span class="brand-mark">FM</span><span>翻车博物馆<small>FAILURE MUSEUM</small></span></button><nav class="nav"><button data-page="home" class="' + (state.page === 'home' ? 'active' : '') + '">大厅</button><button data-page="halls" class="' + (hallActive ? 'active' : '') + '">主题展馆</button><button data-page="community" class="' + (communityActive ? 'active' : '') + '">社区</button><button data-page="curator" class="' + (curatorActive ? 'active' : '') + '">馆长中心</button><button data-page="collection" class="' + (state.page === 'collection' ? 'active' : '') + '">我的馆藏</button><button data-action="settings">服务设置</button></nav></header>' + content + '<nav class="mobile-nav"><button data-page="home" class="' + (state.page === 'home' ? 'active' : '') + '">大厅</button><button data-page="halls" class="' + (hallActive ? 'active' : '') + '">展馆</button><button data-page="intake" class="' + (state.page === 'intake' ? 'active' : '') + '">＋ 入馆</button><button data-page="community" class="' + (communityActive ? 'active' : '') + '">社区</button><button data-page="curator" class="' + (curatorActive ? 'active' : '') + '">馆长</button></nav></main>'
+    return '<main class="' + shellClass + '"><header class="topbar"><button class="icon-btn brand" data-page="home"><span class="brand-mark">FM</span><span>翻车博物馆<small>FAILURE MUSEUM</small></span></button><nav class="nav"><button data-page="home" class="' + (state.page === 'home' ? 'active' : '') + '">大厅</button><button data-page="halls" class="' + (hallActive ? 'active' : '') + '">主题展馆</button><button data-page="community" class="' + (communityActive ? 'active' : '') + '">社区</button><button data-page="curator" class="' + (curatorActive ? 'active' : '') + '">馆长中心</button><button data-page="collection" class="' + (state.page === 'collection' ? 'active' : '') + '">我的馆藏</button><button data-page="account" class="' + (accountActive ? 'active' : '') + '">云端同步</button><button data-action="settings">服务设置</button></nav></header>' + content + '<nav class="mobile-nav"><button data-page="home" class="' + (state.page === 'home' ? 'active' : '') + '">大厅</button><button data-page="halls" class="' + (hallActive ? 'active' : '') + '">展馆</button><button data-page="intake" class="' + (state.page === 'intake' ? 'active' : '') + '">＋ 入馆</button><button data-page="community" class="' + (communityActive ? 'active' : '') + '">社区</button><button data-page="curator" class="' + (curatorActive ? 'active' : '') + '">馆长</button><button data-page="account" class="' + (accountActive ? 'active' : '') + '">云端</button></nav></main>'
   }
   function progress(active) {
     const names = ['1 入馆', '2 鉴定', '3 处置', '4 归档']
@@ -121,7 +121,7 @@
     const brand = '<button class="game-brand" data-page="' + (mode === 'home' ? 'home' : 'halls') + '"><span>FM</span><b>翻车博物馆<small>FAILURE MUSEUM</small></b></button>'
     if (mode === 'home') return '<header class="game-hud game-hud--opening">' + brand + '<div class="game-hud__opening-actions"><button data-action="settings">服务设置</button><button class="game-hud__enter" data-page="halls">进入主馆</button></div></header>'
     const hallLabel = hall ? '<div class="game-location"><span>' + hall.icon + '</span><b>' + esc(hall.name) + '</b></div>' : '<div class="game-location"><span>⌂</span><b>中央草坪</b></div>'
-    return '<header class="game-hud">' + brand + hallLabel + '<button class="game-hud__menu" data-world-command="toggle-menu" aria-label="打开功能菜单">☰</button><nav class="game-hud__nav" aria-label="博物馆功能"><button data-page="halls" class="' + (!hall ? 'active' : '') + '">大厅</button><button data-world-command="directory">主题展馆</button><button data-page="community">社区</button><button data-page="curator">馆长中心</button><button data-page="collection">我的馆藏</button><button data-action="settings">服务设置</button></nav></header>'
+    return '<header class="game-hud">' + brand + hallLabel + '<button class="game-hud__menu" data-world-command="toggle-menu" aria-label="打开功能菜单">☰</button><nav class="game-hud__nav" aria-label="博物馆功能"><button data-page="halls" class="' + (!hall ? 'active' : '') + '">大厅</button><button data-world-command="directory">主题展馆</button><button data-page="community">社区</button><button data-page="curator">馆长中心</button><button data-page="collection">我的馆藏</button><button data-page="account">云端同步</button><button data-action="settings">服务设置</button></nav></header>'
   }
 
   function worldPlayer() {
@@ -462,6 +462,35 @@
     app.innerHTML = shell(body + exhibitDialog())
   }
 
+  function cloudState() { return window.MuseumCloud ? window.MuseumCloud.getState() : { status: 'unavailable', configured: false, error: '云端适配层未加载' } }
+  function mergeCloudRecords(remoteRecords) {
+    const local = collections(), byId = {}
+    local.forEach(function (record) { byId[record.recordId] = record })
+    ;(remoteRecords || []).forEach(function (remote) {
+      const existing = byId[remote.recordId] || {}
+      byId[remote.recordId] = Object.assign({}, existing, remote, { image: remote.image || existing.image || '', artifactImage: remote.artifactImage || existing.artifactImage || '' })
+    })
+    const merged = Object.keys(byId).map(function (key) { return byId[key] }).sort(function (a, b) { return String(b.createdAt || '').localeCompare(String(a.createdAt || '')) })
+    const backupKey = 'museum_collections_web_backup_' + new Date().toISOString().replace(/[:.]/g, '-')
+    localStorage.setItem(backupKey, JSON.stringify(local))
+    localStorage.setItem('museum_collections_web', JSON.stringify(merged))
+    return { count: merged.length, backupKey: backupKey }
+  }
+  function renderAccount() {
+    const cloud = cloudState(), count = collections().length
+    let panel = ''
+    if (!cloud.configured) {
+      panel = '<section class="cloud-card cloud-card--offline"><div class="cloud-orb">⌁</div><div><div class="eyebrow">CLOUD WORKSPACE</div><div class="section-title">云端工作区尚未配置</div><p>本地功能不受影响。创建火山引擎 Supabase 工作区后，在启动环境中配置公开客户端地址和匿名 Key，再执行仓库中的迁移脚本。</p><div class="cloud-code"><code>SUPABASE_URL</code><code>SUPABASE_ANON_KEY</code><code>supabase/migrations/202607250001_initial.sql</code></div><div class="truth-note">SMTP 密码和 SERVICE_ROLE_KEY 只在火山控制台或服务端配置，不能进入浏览器、对话或 Git。</div></div></section>'
+    } else if (!cloud.user) {
+      const otp = cloud.otpSent ? '<form id="cloudVerifyForm" class="cloud-auth-form"><label for="cloudOtp">六位验证码</label><input id="cloudOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required placeholder="000000"><button class="btn primary" type="submit">验证并登录</button><p class="caption">验证码已发送至 ' + esc(cloud.email) + '。若未收到，请检查 SMTP 与邮件模板是否使用 Token 变量。</p></form>' : '<form id="cloudOtpForm" class="cloud-auth-form"><label for="cloudEmail">邮箱地址</label><input id="cloudEmail" type="email" autocomplete="email" required placeholder="name@example.com"><button class="btn primary" type="submit">发送六位验证码</button><p class="caption">首次验证会自动创建个人博物馆账号。</p></form>'
+      panel = '<section class="cloud-card"><div class="cloud-orb">@</div><div><div class="eyebrow">EMAIL OTP</div><div class="section-title">登录云端博物馆</div><p>使用邮箱一次性验证码登录，不设置密码。登录后才会读取或上传私人馆藏。</p>' + otp + '</div></section>'
+    } else {
+      panel = '<section class="cloud-card cloud-card--signed"><div class="cloud-orb">✓</div><div><div class="eyebrow">SIGNED IN</div><div class="section-title">' + esc(cloud.user.email || '已登录账号') + '</div><p>本地有 <b>' + count + '</b> 件馆藏。首次同步会按记录 ID 和内容哈希去重，原本地数据在成功合并前会保留备份。</p><div class="cloud-actions"><button class="btn primary" data-action="cloud-sync" ' + (cloud.syncing ? 'disabled' : '') + '>上传并同步本地馆藏</button><button class="btn secondary" data-action="cloud-pull" ' + (cloud.syncing ? 'disabled' : '') + '>读取云端并合并</button><button class="btn ghost" data-action="cloud-signout">仅退出当前设备</button></div>' + (cloud.progress ? '<div class="cloud-progress">' + esc(cloud.progress) + '</div>' : '') + (cloud.lastSyncedAt ? '<p class="caption">最近同步：' + esc(cloud.lastSyncedAt) + '</p>' : '') + '</div></section>'
+    }
+    const error = cloud.error ? '<div class="warning cloud-error">' + esc(cloud.error) + '</div>' : ''
+    app.innerHTML = shell('<section class="page-head"><div class="eyebrow">VOLCENGINE SUPABASE</div><h1 class="page-title" data-page-title tabindex="-1">账号与云端同步</h1><p class="lead">默认私人、用户主动同步；只有显式发布的展品才会进入社区公开数据。</p></section>' + error + panel + '<section class="cloud-security-grid"><article class="card panel"><div class="eyebrow">PRIVATE BY DEFAULT</div><h3>私人存储</h3><p>案件媒体和摆件位于私有 Bucket，通过短期签名地址访问。</p></article><article class="card panel"><div class="eyebrow">ROW LEVEL SECURITY</div><h3>账号隔离</h3><p>案件、摆件和收藏均以当前用户 ID 执行行级权限策略。</p></article><article class="card panel"><div class="eyebrow">RECOVERABLE IMPORT</div><h3>可恢复迁移</h3><p>云端合并前保存本地备份；网络失败不会删除浏览器中的原馆藏。</p></article></section>')
+  }
+
   let hallDoorTimer = null
   function clearHallTransition() {
     if (hallDoorTimer) clearTimeout(hallDoorTimer)
@@ -474,7 +503,7 @@
     if (root === 'hall' && venue && (venue.world || venue.theme) && venue.status === 'open') return { page: 'hall', hallId: venue.id, canonical: 'hall/' + venue.id }
     if (root === 'halls' && hall) return { page: 'halls', hallId: hall.id, canonical: 'halls/' + hall.id }
     if (root === 'halls' && !hallId) return { page: 'halls', hallId: '', canonical: 'halls' }
-    if (['home', 'intake', 'diagnosis', 'action', 'coach', 'finish', 'result', 'community', 'curator', 'collection'].indexOf(root) >= 0 && parts.length === 1) return { page: root, hallId: '', canonical: root }
+    if (['home', 'intake', 'diagnosis', 'action', 'coach', 'finish', 'result', 'community', 'curator', 'collection', 'account'].indexOf(root) >= 0 && parts.length === 1) return { page: root, hallId: '', canonical: root }
     return { page: 'home', hallId: '', canonical: 'home', invalid: true }
   }
   function applyRoute(route) {
@@ -500,6 +529,7 @@
     else if (state.page === 'community') renderCommunity()
     else if (state.page === 'curator') renderCurator()
     else if (state.page === 'collection') renderCollection()
+    else if (state.page === 'account') renderAccount()
     else renderHome()
     if (state.focusPageTitle) {
       const heading = app.querySelector('[data-page-title], h1')
@@ -683,8 +713,14 @@
   function publishResult() {
     const item = state.visit.analysis, confirmed = confirm('你是否确认这次抢救或改造已经达到可接受结果？\n“取消”仍可发布，但会进入今日新展而不是抢救成功区。')
     const posts = userPosts()
-    posts.unshift({ id: 'result-' + Date.now(), sourceCaseId: item.id || '', title: item.name || item.shortName, content: '完成了“' + routesMeta[state.selectedRoute].name + '”路线：' + item.routes[state.selectedRoute].summary, hall: item.hall || '待分类展馆', image: state.visit.image, section: confirmed ? 'rescued' : 'new', fingerprint: item.shortName || item.anomaly, author: '本地用户', comments: [], createdAt: new Date().toLocaleString('zh-CN') })
-    try { saveUserPosts(posts); state.communityTab = confirmed ? 'rescued' : 'new'; go('community'); toast('已发布到博物馆社区') } catch (_) { toast('本地空间不足，发布失败') }
+    const finalHall = hallById(state.finalHallId) || hallById(resolveHallIdFromVisit(state.visit))
+    posts.unshift({ id: 'result-' + Date.now(), sourceCaseId: item.id || '', title: item.name || item.shortName, content: '完成了“' + routesMeta[state.selectedRoute].name + '”路线：' + item.routes[state.selectedRoute].summary, hall: finalHall ? finalHall.name : item.hall || '待分类展馆', image: state.visit.image, section: confirmed ? 'rescued' : 'new', fingerprint: item.shortName || item.anomaly, author: '本地用户', comments: [], createdAt: new Date().toLocaleString('zh-CN') })
+    try {
+      saveUserPosts(posts)
+      const records = collections(), archived = records.filter(function (record) { return record.caseId && record.caseId === item.id })[0]
+      if (archived) { archived.published = true; localStorage.setItem('museum_collections_web', JSON.stringify(records)) }
+      state.communityTab = confirmed ? 'rescued' : 'new'; go('community'); toast('已主动发布到博物馆社区')
+    } catch (_) { toast('本地空间不足，发布失败') }
   }
 
   function generatePoster() {
@@ -830,6 +866,16 @@
 
   app.addEventListener('submit', function (event) {
     event.preventDefault()
+    if (event.target.id === 'cloudOtpForm') {
+      const button = event.target.querySelector('button'); button.disabled = true
+      window.MuseumCloud.sendOtp(document.getElementById('cloudEmail').value).then(function () { toast('验证码已发送'); renderAccount() }).catch(function (error) { toast(error.message); renderAccount() })
+      return
+    }
+    if (event.target.id === 'cloudVerifyForm') {
+      const button = event.target.querySelector('button'); button.disabled = true
+      window.MuseumCloud.verifyOtp(document.getElementById('cloudOtp').value).then(function () { toast('登录成功'); renderAccount() }).catch(function (error) { toast(error.message); renderAccount() })
+      return
+    }
     if (event.target.id === 'hallSearch') { state.hallQuery = document.getElementById('hallQuery').value.trim(); renderHalls(); return }
     if (event.target.id === 'communityForm') { submitCommunityPost(); return }
     if (event.target.id === 'curatorApply') { submitCuratorApply(); return }
@@ -882,6 +928,13 @@
     if (action === 'save-course') { addToList('museum_course_list', (platform.serviceCatalog[resolveHallIdFromVisit(state.visit)] || {}).course || '待补课程'); toast('已保存到学习清单') }
     if (action === 'voice') startVoiceInput()
     if (action === 'retry-artifact') startArtifactGeneration(true)
+    if (action === 'cloud-sync') {
+      window.MuseumCloud.syncLocal(collections()).then(function (result) { toast('已同步 ' + result.count + ' 件馆藏'); renderAccount() }).catch(function (error) { toast(error.message); renderAccount() })
+    }
+    if (action === 'cloud-pull') {
+      window.MuseumCloud.pullCloud().then(function (records) { const merged = mergeCloudRecords(records); toast('云端馆藏已合并，本地备份已保留'); renderAccount(); console.info('Museum local backup:', merged.backupKey) }).catch(function (error) { toast(error.message); renderAccount() })
+    }
+    if (action === 'cloud-signout') window.MuseumCloud.signOut().then(function () { toast('已退出当前设备'); renderAccount() }).catch(function (error) { toast(error.message) })
   }
 
   function startVoiceInput() {
@@ -937,6 +990,7 @@
     const dialog = document.querySelector('.game-dialog:not([hidden])')
     if (dialog) dialog.hidden = true
   })
+  window.addEventListener('museum:cloud-state', function () { if (state.page === 'account') renderAccount() })
   const initialRoute = parseRoute(location.hash)
   const previewParams = new URLSearchParams(location.search)
   if (['archive', 'report', 'content', 'service'].indexOf(previewParams.get('tab')) >= 0) state.resultTab = previewParams.get('tab')

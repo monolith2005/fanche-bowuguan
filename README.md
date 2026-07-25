@@ -30,3 +30,9 @@ python3 local_server.py
 ```
 
 图片模型未开通时，鉴定和归档仍可使用，展台会显示确定性的本地像素占位并提供重试入口。
+
+## 云端同步（可选）
+
+云端采用火山引擎 Supabase 版。未配置时页面保持本地模式；配置 `SUPABASE_URL` 和 `SUPABASE_ANON_KEY` 后，“云端同步”页面会启用邮箱验证码与私人馆藏同步。
+
+建表、RLS、私有 Storage 和 SMTP 验收步骤见 [火山 Supabase 部署与验收](docs/火山Supabase部署与验收.md)。
