@@ -35,6 +35,11 @@
     { id: 'camera', name: '拍摄翻车馆', icon: '◉', desc: '构图、光线、显矮、运镜与氛围失效', color: '#586779', status: 'open', world: { door: { x: 1116, y: 748 }, interior: '/assets/images/pixel-world/interiors/camera.webp', curator: '焦点馆长', curatorIndex: 5, welcome: '画面没达到预期，通常能从机位、光线和运动里找到原因。' } }
   ]
 
+  const mainHall = {
+    id: 'main', name: '中央总馆', icon: '✦', desc: '接收未分类案例，由 AI 推荐归入六座主题展馆', color: '#9b5b36', status: 'open', isMain: true,
+    world: { door: { x: 800, y: 770 }, interior: '/assets/images/pixel-world/interiors/main-hall.png', curator: '小票馆长', curatorIndex: 0, welcome: '还不知道该去哪个馆也没关系。把现场交给我，AI 会先给出推荐，你确认后再正式归馆。' }
+  }
+
   const hallByCase = { cake: 'kitchen', eyeliner: 'beauty', house: 'craft' }
 
   const serviceCatalog = {
@@ -75,7 +80,7 @@
     { id: 'court', name: '翻车法庭', desc: '让目标、实际结果与 AI 鉴定官分别发言' }
   ]
 
-  const api = { halls: halls, hallByCase: hallByCase, serviceCatalog: serviceCatalog, communitySections: communitySections, contentTemplates: contentTemplates }
+  const api = { halls: halls, mainHall: mainHall, venues: [mainHall].concat(halls), hallByCase: hallByCase, serviceCatalog: serviceCatalog, communitySections: communitySections, contentTemplates: contentTemplates }
   if (typeof module !== 'undefined' && module.exports) module.exports = api
   if (root) root.MuseumPlatform = api
 })(typeof window !== 'undefined' ? window : null)

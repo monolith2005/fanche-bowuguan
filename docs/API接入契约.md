@@ -28,6 +28,8 @@
 {
   "id": "server-case-id",
   "hall": "手作事故馆",
+  "suggestedHallId": "craft",
+  "classificationReason": "异常集中在模型结构与粘接阶段，需要手作材料和支撑知识。",
   "name": "《服务端生成或用户确认的展品名》",
   "target": "稳定的模型结构",
   "stage": "主体粘接后",
@@ -61,7 +63,25 @@
 - 食品、电器、刺激性材料场景必须先执行安全规则，再生成处置建议。
 - `matches` 必须来自真实索引；无结果时返回空数组。
 
-## 2. 陪练视觉复核
+## 2. 像素摆件生成
+
+`POST /api/v1/artifacts/generate`
+
+请求为 `application/json`，包含案件 ID、精简后的 `analysis` 对象，以及可选的图片 data URL。接口使用服务端 `ARK_IMAGE_MODEL`，返回已经去底并归一化到 128×128 的透明 PNG：
+
+```json
+{
+  "artifact_id": "artifact-1234",
+  "status": "ready",
+  "preview_data_url": "data:image/png;base64,...",
+  "model": "doubao-seedream-5-0-pro-260628",
+  "prompt_version": "pixel-artifact-v1"
+}
+```
+
+模型未开通、密钥无效和网络错误必须使用不同错误码；失败不能阻塞鉴定、改馆或归档。
+
+## 3. 陪练视觉复核
 
 `POST /api/v1/cases/{caseId}/verify`
 
