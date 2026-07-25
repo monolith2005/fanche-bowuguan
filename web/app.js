@@ -10,7 +10,8 @@
     enteringHall: false, focusPageTitle: false,
     backendReady: false, arkConfigured: false, redfoxConfigured: false, arkModel: '',
     douyinResults: [], douyinLoading: false, douyinError: '', douyinKeyword: '',
-    ffmpegAvailable: false, videoTemplate: 'documentary-20', videoJob: null
+    ffmpegAvailable: false, videoTemplate: 'documentary-20', videoJob: null,
+    suggestedHallId: '', finalHallId: '', artifactStatus: 'idle', artifact: null, artifactError: ''
   }
   const app = document.getElementById('app')
   const toastNode = document.getElementById('toast')
@@ -44,6 +45,7 @@
     return '未检测到本地 AI 代理。馆藏案例可体验，自选现场进入待分析状态。'
   }
   function hallById(id) { return platform.halls.filter(function (hall) { return hall.id === id })[0] || null }
+  function venueById(id) { return id === 'main' ? platform.mainHall : hallById(id) }
   function hallIdByName(name) {
     const hall = platform.halls.filter(function (item) { return item.name === name })[0]
     return hall ? hall.id : ''
@@ -51,7 +53,8 @@
   function resolveHallIdFromVisit(visit) {
     if (!visit) return ''
     const item = visit.analysis || {}, caseId = item.id || visit.caseId || ''
-    return platform.hallByCase[caseId] || hallIdByName(item.hall) || visit.entryHallId || ''
+    const entry = visit.entryHallId === 'main' ? '' : visit.entryHallId
+    return visit.finalHallId || state.finalHallId || platform.hallByCase[caseId] || hallIdByName(item.hall) || entry || ''
   }
   function isWorkflowPage(page) { return ['intake', 'diagnosis', 'action', 'coach', 'finish', 'result'].indexOf(page) >= 0 }
   function activeHallId() {
@@ -60,7 +63,7 @@
     if (!isWorkflowPage(state.page)) return ''
     return resolveHallIdFromVisit(state.visit) || state.entryHallId || ''
   }
-  function activeHall() { return hallById(activeHallId()) }
+  function activeHall() { return venueById(activeHallId()) }
   function applyDocumentTheme() {
     const hall = activeHall(), themeId = hall && hall.theme ? hall.id : ''
     if (themeId) document.body.dataset.theme = themeId
@@ -68,22 +71,22 @@
   }
   function hallContextRibbon(label) {
     const hall = activeHall()
-    if (!hall || !hall.theme) return ''
+    if (!hall) return ''
     return '<aside class="hall-context" aria-label="当前所在展馆"><span class="hall-context__icon">' + hall.icon + '</span><span><b>' + esc(hall.name) + '</b><small>' + esc(label || '馆内参观路线') + '</small></span></aside>'
   }
   function shell(content, options) {
     applyDocumentTheme()
     const hall = activeHall(), themed = hall && hall.theme, immersive = options && options.immersive
-    const hallActive = state.page === 'hall' || state.page === 'halls', communityActive = state.page === 'community', curatorActive = state.page === 'curator'
+    const hallActive = state.page === 'hall' || state.page === 'halls', communityActive = state.page === 'community', curatorActive = state.page === 'curator', accountActive = state.page === 'account'
     const shellClass = 'shell' + (themed ? ' theme-' + hall.id : '') + (immersive ? ' shell--immersive' : '')
-    return '<main class="' + shellClass + '"><header class="topbar"><button class="icon-btn brand" data-page="home"><span class="brand-mark">FM</span><span>翻车博物馆<small>FAILURE MUSEUM</small></span></button><nav class="nav"><button data-page="home" class="' + (state.page === 'home' ? 'active' : '') + '">大厅</button><button data-page="halls" class="' + (hallActive ? 'active' : '') + '">主题展馆</button><button data-page="community" class="' + (communityActive ? 'active' : '') + '">社区</button><button data-page="curator" class="' + (curatorActive ? 'active' : '') + '">馆长中心</button><button data-page="collection" class="' + (state.page === 'collection' ? 'active' : '') + '">我的馆藏</button><button data-action="settings">服务设置</button></nav></header>' + content + '<nav class="mobile-nav"><button data-page="home" class="' + (state.page === 'home' ? 'active' : '') + '">大厅</button><button data-page="halls" class="' + (hallActive ? 'active' : '') + '">展馆</button><button data-page="intake" class="' + (state.page === 'intake' ? 'active' : '') + '">＋ 入馆</button><button data-page="community" class="' + (communityActive ? 'active' : '') + '">社区</button><button data-page="curator" class="' + (curatorActive ? 'active' : '') + '">馆长</button></nav></main>'
+    return '<main class="' + shellClass + '"><header class="topbar"><button class="icon-btn brand" data-page="home"><span class="brand-mark">FM</span><span>翻车博物馆<small>FAILURE MUSEUM</small></span></button><nav class="nav"><button data-page="home" class="' + (state.page === 'home' ? 'active' : '') + '">大厅</button><button data-page="halls" class="' + (hallActive ? 'active' : '') + '">主题展馆</button><button data-page="community" class="' + (communityActive ? 'active' : '') + '">社区</button><button data-page="curator" class="' + (curatorActive ? 'active' : '') + '">馆长中心</button><button data-page="collection" class="' + (state.page === 'collection' ? 'active' : '') + '">我的馆藏</button><button data-page="account" class="' + (accountActive ? 'active' : '') + '">云端同步</button><button data-action="settings">服务设置</button></nav></header>' + content + '<nav class="mobile-nav"><button data-page="home" class="' + (state.page === 'home' ? 'active' : '') + '">大厅</button><button data-page="halls" class="' + (hallActive ? 'active' : '') + '">展馆</button><button data-page="intake" class="' + (state.page === 'intake' ? 'active' : '') + '">＋ 入馆</button><button data-page="community" class="' + (communityActive ? 'active' : '') + '">社区</button><button data-page="curator" class="' + (curatorActive ? 'active' : '') + '">馆长</button><button data-page="account" class="' + (accountActive ? 'active' : '') + '">云端</button></nav></main>'
   }
   function progress(active) {
     const names = ['1 入馆', '2 鉴定', '3 处置', '4 归档']
     return '<div class="steps-nav">' + names.map(function (name, index) { return index === active ? '<b>' + name + '</b>' : '<span>' + name + '</span>' }).join('') + '</div>'
   }
 
-  function renderHome() {
+  function renderLegacyHome() {
     const halls = platform.halls
     const cards = cases.map(function (item) {
       return '<button type="button" class="case-card case-card-button" data-case="' + item.id + '"><img src="..' + item.image + '" alt="' + esc(item.shortName) + '"><span class="case-body"><span class="case-meta"><span>' + esc(item.hall) + '</span><span>馆藏案例</span></span><span class="case-name">' + esc(item.name) + '</span><span class="chips"><span class="chip">' + esc(item.severity) + '</span><span class="chip">可逆性 ' + esc(item.reversible) + '</span></span></span></button>'
@@ -97,7 +100,7 @@
     app.querySelector('.mobile-nav').insertAdjacentHTML('beforebegin', snapshot)
   }
 
-  function renderHallEntrance() {
+  function renderLegacyHallEntrance() {
     const hall = hallById(state.routeHallId), theme = hall && hall.theme
     if (!hall || !theme || hall.status !== 'open') { go(hall ? 'halls/' + hall.id : 'halls', { replace: true }); return }
     const mobileDoor = theme.door.mobile, desktopDoor = theme.door.desktop
@@ -114,7 +117,122 @@
     app.innerHTML = shell('<section class="hall-gateway" data-gateway="' + hall.id + '" style="' + gatewayStyle + '"><picture class="hall-scene"><source media="(max-width: 800px)" srcset="..' + theme.scene.mobile + '"><img src="..' + theme.scene.desktop + '" alt="' + esc(theme.scene.alt) + '" fetchpriority="high"></picture><div class="hall-scene__veil" aria-hidden="true"></div>' + ambient + '<div class="hall-gateway__heading"><div class="eyebrow">' + esc(theme.entry.eyebrow) + '</div><h1 data-page-title tabindex="-1">' + esc(theme.entry.title) + '</h1><p>' + esc(theme.entry.description) + '</p><span class="hall-open-badge">PIXEL PILOT · 今日开放</span></div><button type="button" class="hall-door" data-enter-door="' + hall.id + '" aria-label="' + esc(theme.entry.cta + hall.name) + '"><span class="hall-door__glow" aria-hidden="true"></span><span class="hall-door__frame" aria-hidden="true"><i class="hall-door__left"></i><i class="hall-door__right"></i></span><span class="hall-door__label">' + esc(theme.entry.cta) + '<small>ENTER GALLERY</small></span></button><div class="hall-gateway__legend"><span>◒ 食材安全优先</span><span>01 / 06 主题展馆</span></div></section>', { immersive: true })
   }
 
+  function worldHud(mode, hall) {
+    const brand = '<button class="game-brand" data-page="' + (mode === 'home' ? 'home' : 'halls') + '"><span>FM</span><b>翻车博物馆<small>FAILURE MUSEUM</small></b></button>'
+    if (mode === 'home') return '<header class="game-hud game-hud--opening">' + brand + '<div class="game-hud__opening-actions"><button data-action="settings">服务设置</button><button class="game-hud__enter" data-page="halls">进入主馆</button></div></header>'
+    const hallLabel = hall ? '<div class="game-location"><span>' + hall.icon + '</span><b>' + esc(hall.name) + '</b></div>' : '<div class="game-location"><span>⌂</span><b>中央草坪</b></div>'
+    return '<header class="game-hud">' + brand + hallLabel + '<button class="game-hud__menu" data-world-command="toggle-menu" aria-label="打开功能菜单">☰</button><nav class="game-hud__nav" aria-label="博物馆功能"><button data-page="halls" class="' + (!hall ? 'active' : '') + '">大厅</button><button data-world-command="directory">主题展馆</button><button data-page="community">社区</button><button data-page="curator">馆长中心</button><button data-page="collection">我的馆藏</button><button data-page="account">云端同步</button><button data-action="settings">服务设置</button></nav></header>'
+  }
+
+  function worldPlayer() {
+    return '<div class="world-player" data-world-player data-direction="up" data-frame="0" aria-hidden="true"><span class="world-player__shadow"></span><span class="world-player__sprite"></span></div>'
+  }
+
+  function worldHelp(copy) {
+    return '<aside class="world-help"><b>点击 / 触摸</b>移动 · 电脑支持 <b>WASD</b><span>' + esc(copy) + '</span></aside>'
+  }
+
+  function directoryDialog() {
+    const venues = [platform.mainHall].concat(platform.halls)
+    const buttons = venues.map(function (hall) { return '<button data-enter-hall="' + hall.id + '" class="' + (hall.isMain ? 'is-main' : '') + '"><span>' + hall.icon + '</span><b>' + esc(hall.name) + '</b><small>' + esc(hall.desc) + '</small></button>' }).join('')
+    return '<section class="game-dialog game-directory" data-world-directory hidden role="dialog" aria-modal="true" aria-label="博物馆导览"><div class="game-dialog__panel"><button class="game-dialog__close" data-world-command="close-dialog" aria-label="关闭">×</button><div class="game-dialog__eyebrow">CAMPUS DIRECTORY</div><h2>中央总馆与六座分馆</h2><p>不确定分类时先去总馆；也可以直接进入对应分馆。</p><div class="game-directory__grid">' + buttons + '</div></div></section>'
+  }
+
+  function curatorDialog(hall) {
+    return '<section class="game-dialog" data-curator-dialog hidden role="dialog" aria-modal="true" aria-label="与' + esc(hall.world.curator) + '对话"><div class="game-dialog__panel game-dialog__panel--curator"><button class="game-dialog__close" data-world-command="close-dialog" aria-label="关闭">×</button><div class="game-dialog__portrait" data-curator-index="' + hall.world.curatorIndex + '"></div><div><div class="game-dialog__eyebrow">' + (hall.isMain ? 'MAIN RECEPTION' : 'CURATOR · ' + String(hall.world.curatorIndex + 1).padStart(2, '0')) + '</div><h2>' + esc(hall.world.curator) + '</h2><p>“' + esc(hall.world.welcome) + '”</p><div class="game-dialog__actions"><button class="btn primary" data-world-command="submit-case" data-hall-id="' + hall.id + '">' + (hall.isMain ? '提交未分类案例' : '提交我的翻车案例') + '</button><button class="btn secondary" data-world-command="browse-collection" data-hall-id="' + hall.id + '">' + (hall.isMain ? '查看全部馆藏' : '查看本馆馆藏') + '</button></div></div></div></section>'
+  }
+
+  function exhibitImage(record) { return record.artifactImage || fallbackArtifact(record.hallId || hallIdByName(record.hall)) }
+  function hallRecords(hallId) { return collections().filter(function (record) { return (record.hallId || hallIdByName(record.hall)) === hallId }) }
+  function pedestalMarkup(hall) {
+    if (!hall || hall.isMain) return ''
+    const records = hallRecords(hall.id).slice(0, 4)
+    const points = [{ x: 500, y: 650 }, { x: 650, y: 650 }, { x: 950, y: 650 }, { x: 1100, y: 650 }]
+    return '<div class="world-pedestal-layer" aria-label="本馆最新展品">' + points.map(function (point, index) {
+      const record = records[index]
+      if (!record) return '<div class="world-pedestal is-empty" style="--x:' + point.x + 'px;--y:' + point.y + 'px"><span class="world-pedestal__empty">?</span><b>待征集</b></div>'
+      return '<button class="world-pedestal" data-view-exhibit="' + esc(record.recordId) + '" style="--x:' + point.x + 'px;--y:' + point.y + 'px"><img src="' + esc(exhibitImage(record)) + '" alt="' + esc(record.name) + '"><b>' + esc(record.name) + '</b></button>'
+    }).join('') + '</div>'
+  }
+  function exhibitDialog() {
+    return '<section class="game-dialog" data-exhibit-dialog hidden role="dialog" aria-modal="true" aria-label="展品详情"><div class="game-dialog__panel game-dialog__panel--exhibit"><button class="game-dialog__close" data-world-command="close-dialog" aria-label="关闭">×</button><div data-exhibit-dialog-body></div></div></section>'
+  }
+  function openExhibitDialog(recordId) {
+    const record = collections().filter(function (item) { return item.recordId === recordId })[0], dialog = document.querySelector('[data-exhibit-dialog]')
+    if (!record || !dialog) return
+    const hall = hallById(record.hallId || hallIdByName(record.hall))
+    dialog.querySelector('[data-exhibit-dialog-body]').innerHTML = '<div class="exhibit-detail"><div class="exhibit-detail__images"><img class="artifact" src="' + esc(exhibitImage(record)) + '" alt="像素摆件"><img src="' + esc(record.image) + '" alt="原始现场"></div><div><div class="game-dialog__eyebrow">COLLECTION · ' + esc(hall ? hall.name : record.hall) + '</div><h2>' + esc(record.name) + '</h2><p>' + esc(record.anomaly || '已完成鉴定并收入本馆。') + '</p><dl><dt>AI 推荐</dt><dd>' + esc(record.suggestedHallName || record.hall) + '</dd><dt>最终归馆</dt><dd>' + esc(record.hall) + '</dd><dt>处置路线</dt><dd>' + esc(record.routeName || '待选择') + '</dd></dl></div></div>'
+    dialog.hidden = false
+    dialog.querySelector('button').focus()
+  }
+
+  function renderHome() {
+    delete document.body.dataset.theme
+    app.innerHTML = '<main class="game-world game-world--opening"><div class="game-viewport" data-world-viewport><div class="game-stage" data-world-stage style="background-image:url(../assets/images/pixel-world/museum-exterior.webp)"><div class="museum-title-card"><div>VISUAL SEARCH · FAILURE MUSEUM</div><h1>翻车博物馆</h1><p>每一次失败，都值得被认真收藏。</p></div><button class="world-poi world-poi--museum" data-world-poi="museum-door" data-action="enter-museum" data-x="800" data-y="505" style="--x:800px;--y:430px"><span>推门入馆</span><small>ENTER MUSEUM</small></button>' + worldPlayer() + '</div></div>' + worldHud('home') + worldHelp('沿中央道路走到博物馆大门') + '</main>'
+    window.MuseumWorld.mount({
+      width: 1600, height: 1000, spawn: { x: 800, y: 930 }, bounds: { left: 300, top: 455, right: 1300, bottom: 970 }, obstacles: [],
+      onInteract: function (action) { if (action === 'enter-museum') go('halls') }
+    })
+  }
+
+  function renderCampus() {
+    delete document.body.dataset.theme
+    const pois = platform.halls.map(function (hall) {
+      const door = hall.world.door
+      const approachY = door.y + (door.y < 350 ? 25 : 55)
+      return '<button class="world-poi world-poi--hall" data-world-poi="hall-' + hall.id + '" data-action="enter-hall" data-id="' + hall.id + '" data-x="' + door.x + '" data-y="' + approachY + '" style="--x:' + door.x + 'px;--y:' + door.y + 'px;--hall-color:' + hall.color + '"><span>' + hall.icon + ' ' + esc(hall.name) + '</span><small>推门参观</small></button>'
+    }).join('')
+    const main = platform.mainHall
+    const mainPoi = '<button class="world-poi world-poi--main" data-world-poi="hall-main" data-action="enter-hall" data-id="main" data-x="800" data-y="785" style="--x:800px;--y:755px"><span>✦ 中央总馆</span><small>未分类案例接待</small></button>'
+    app.innerHTML = '<main class="game-world game-world--campus"><div class="game-viewport" data-world-viewport><div class="game-stage" data-world-stage style="background-image:url(../assets/images/pixel-world/campus-map-v2.png)"><div class="campus-title-card"><small>FAILURE MUSEUM CAMPUS</small><b>中央总馆 · 六馆开放</b></div>' + pois + mainPoi + worldPlayer() + '</div></div>' + worldHud('campus') + worldHelp('不确定分类可先去中央总馆，角色会自动寻找路线') + directoryDialog() + '</main>'
+    window.MuseumWorld.mount({
+      width: 1600, height: 1024, radius: 18, grid: 20, interactionDistance: 125, spawn: { x: 800, y: 955 }, bounds: { left: 35, top: 35, right: 1565, bottom: 995 },
+      obstacles: [
+        { x: 350, y: 85, width: 300, height: 120 }, { x: 350, y: 205, width: 100, height: 65 }, { x: 550, y: 205, width: 100, height: 65 },
+        { x: 950, y: 80, width: 315, height: 120 }, { x: 950, y: 200, width: 105, height: 70 }, { x: 1150, y: 200, width: 115, height: 70 },
+        { x: 330, y: 350, width: 335, height: 125 }, { x: 965, y: 350, width: 335, height: 130 },
+        { x: 275, y: 570, width: 350, height: 150 }, { x: 1000, y: 575, width: 330, height: 150 },
+        { type: 'circle', x: 800, y: 700, radius: 55 }
+      ],
+      onInteract: function (action, id) { if (action === 'enter-hall') go('hall/' + id) }
+    })
+  }
+
+  function openCuratorDialog() {
+    const dialog = document.querySelector('[data-curator-dialog]')
+    if (!dialog) return
+    dialog.hidden = false
+    const first = dialog.querySelector('button')
+    if (first) first.focus()
+  }
+
+  function renderHallEntrance() {
+    const hall = venueById(state.routeHallId)
+    if (!hall || !hall.world) { go('halls', { replace: true }); return }
+    if (hall.isMain) delete document.body.dataset.theme
+    else document.body.dataset.theme = hall.id
+    const curatorY = hall.isMain ? 325 : 305, interactionY = hall.isMain ? 440 : 430
+    const curator = '<div class="world-curator" data-curator-index="' + hall.world.curatorIndex + '" style="--x:800px;--y:' + curatorY + 'px"><span class="world-curator__sprite"></span><b>' + esc(hall.world.curator) + '</b></div>'
+    const poi = '<button class="world-poi world-poi--npc" data-world-poi="curator-' + hall.id + '" data-action="talk-curator" data-id="' + hall.id + '" data-x="800" data-y="' + interactionY + '" style="--x:800px;--y:' + (interactionY - 70) + 'px"><span>与馆长对话</span><small>' + (hall.isMain ? 'AI 分类接待' : '提交案例') + '</small></button>'
+    const exit = '<button class="world-poi world-poi--exit" data-world-poi="exit-' + hall.id + '" data-action="exit-hall" data-id="' + hall.id + '" data-x="800" data-y="900" style="--x:800px;--y:930px"><span>返回中央草坪</span></button>'
+    app.innerHTML = '<main class="game-world game-world--interior ' + (hall.isMain ? 'game-world--main-hall' : '') + '" style="--hall-color:' + hall.color + '"><div class="game-viewport" data-world-viewport><div class="game-stage" data-world-stage style="background-image:url(..' + hall.world.interior + ')">' + pedestalMarkup(hall) + curator + poi + exit + worldPlayer() + '</div></div>' + worldHud('hall', hall) + worldHelp(hall.isMain ? '走近接待员，提交未分类案例并确认 AI 推荐分馆' : '四个展台展示最新藏品；走近馆长可继续提交') + curatorDialog(hall) + exhibitDialog() + directoryDialog() + '</main>'
+    const pedestalObstacles = hall.isMain ? [] : [{ x: 450, y: 570, width: 100, height: 80 }, { x: 600, y: 570, width: 100, height: 80 }, { x: 900, y: 570, width: 100, height: 80 }, { x: 1050, y: 570, width: 100, height: 80 }]
+    window.MuseumWorld.mount({
+      width: 1600, height: 1000, radius: 18, grid: 20, spawn: { x: 800, y: 885 }, bounds: { left: 95, top: 250, right: 1505, bottom: 920 },
+      obstacles: (hall.isMain ? [{ x: 585, y: 165, width: 430, height: 175 }, { x: 100, y: 185, width: 340, height: 175 }, { x: 1160, y: 185, width: 340, height: 175 }] : [
+        { x: 85, y: 220, width: 420, height: 190 }, { x: 1095, y: 220, width: 420, height: 190 },
+        { x: 80, y: 650, width: 430, height: 140 }, { x: 1090, y: 650, width: 430, height: 140 },
+        { x: 620, y: 150, width: 360, height: 175 }
+      ]).concat(pedestalObstacles),
+      onInteract: function (action) {
+        if (action === 'talk-curator') openCuratorDialog()
+        if (action === 'exit-hall') go('halls')
+      }
+    })
+  }
+
   function renderHalls() {
+    if (!state.routeHallId && state.hallId === 'all') { renderCampus(); return }
     const selectedHall = state.hallId === 'all' ? null : platform.halls.filter(function (hall) { return hall.id === state.hallId })[0]
     const query = state.hallQuery.toLowerCase()
     const filtered = cases.filter(function (item) {
@@ -131,15 +249,45 @@
   function renderIntake() {
     const visit = state.visit || {}
     const image = visit.image || ''
-    const media = !image ? '<label class="upload-empty"><input class="visually-hidden-file" id="imageInput" type="file" accept="image/png,image/jpeg,video/mp4,video/webm" capture="environment"><div class="upload-plus">＋</div><b>拍照、选择图片或视频</b><p>支持 JPG / PNG / MP4 / WebM</p></label>' : (visit.mediaType === 'video' ? '<video src="' + image + '" controls playsinline></video>' : '<div class="region-stage" id="regionStage"><img src="' + image + '" alt="待分析图片"><div id="regionBox" class="region-box" style="' + regionStyle(visit.region) + '"></div><div class="region-hint">拖动框选异常区域</div></div>') + '<label class="badge change-media"><input class="visually-hidden-file" id="imageInput" type="file" accept="image/png,image/jpeg,video/mp4,video/webm">更换现场</label>'
+    const media = !image ? '<label class="upload-empty rpg-slot rpg-slot--large"><input class="visually-hidden-file" id="imageInput" type="file" accept="image/png,image/jpeg,video/mp4,video/webm" capture="environment"><div class="upload-plus">＋</div><b>放入翻车现场</b><p>拍照 / JPG / PNG / MP4 / WebM</p></label>' : (visit.mediaType === 'video' ? '<video src="' + image + '" controls playsinline></video>' : '<div class="region-stage" id="regionStage"><img src="' + image + '" alt="待分析图片"><div id="regionBox" class="region-box" style="' + regionStyle(visit.region) + '"></div><div class="region-hint">拖动框选异常区域</div></div>') + '<label class="badge change-media"><input class="visually-hidden-file" id="imageInput" type="file" accept="image/png,image/jpeg,video/mp4,video/webm">更换现场</label>'
     const targetPreview = visit.targetImage ? '<img class="target-preview" src="' + visit.targetImage + '" alt="目标效果图">' : ''
-    const hall = activeHall(), themedCopy = hall && hall.id === 'kitchen'
-    app.innerHTML = shell(progress(0) + hallContextRibbon('新展接待处 · 第 1 站') + '<section class="page-head"><div class="eyebrow">' + (themedCopy ? 'Kitchen Intake · New Exhibit' : 'New Exhibit') + '</div><h1 class="page-title" data-page-title tabindex="-1">' + (themedCopy ? '把厨房翻车送进馆里' : '提交翻车现场') + '</h1><p class="lead">视觉表达当前结果，目标图表达想做到的状态，文字或语音补充过程和约束。</p></section><section class="intake-layout"><div><div class="card upload">' + media + '</div><div class="capture-tools"><span>' + (visit.region ? '已记录异常区域' : '图片可拖动框选异常区域') + '</span><label class="btn ghost"><input class="visually-hidden-file" id="targetInput" type="file" accept="image/png,image/jpeg">＋ 添加目标效果图</label></div>' + targetPreview + '</div><form id="intakeForm" class="card form"><div class="field"><label for="description">发生了什么？ <button type="button" class="voice-btn" data-action="voice">◉ 语音描述</button></label><textarea id="description" maxlength="500" placeholder="例如：跟着教程做到第三步，奶油突然变成颗粒了">' + esc(visit.description || '') + '</textarea></div><div class="field"><label for="target">你原本想做成什么？</label><input id="target" value="' + esc(visit.target || '') + '" placeholder="目标结果（建议填写）"></div><div class="field two-fields"><div><label for="sourceUrl">关联原教程</label><input id="sourceUrl" value="' + esc(visit.sourceUrl || '') + '" placeholder="教程链接或作品标识"></div><div><label for="sourceTime">翻车发生时间点</label><input id="sourceTime" value="' + esc(visit.sourceTime || '') + '" placeholder="例如 00:36 / 第3步"></div></div><div class="field"><label for="constraints">现实约束</label><input id="constraints" value="' + esc(visit.constraints || '') + '" placeholder="时间、材料、预算、是否愿意重做…"></div><div class="truth-note">' + esc(analysisServiceNote()) + '</div><button class="btn primary full" type="submit">送往 AI 鉴定室</button></form></section>')
+    const hall = activeHall(), isMain = hall && hall.isMain, title = isMain ? '交给总馆来分类' : hall ? '提交到' + hall.name : '提交翻车现场'
+    const intro = isMain ? '不需要先判断属于哪个馆。AI 会给出推荐和理由，由你确认后再归馆。' : '视觉表达当前结果，目标图表达想做到的状态，文字或语音补充过程和约束。'
+    app.innerHTML = shell('<div class="rpg-steps">' + progress(0) + '</div>' + hallContextRibbon(isMain ? '中央总馆 · 未分类接待处' : '新展接待处 · 第 1 站') + '<section class="page-head intake-head"><div class="eyebrow">NEW EXHIBIT · INTAKE DESK</div><h1 class="page-title" data-page-title tabindex="-1">' + esc(title) + '</h1><p class="lead">' + esc(intro) + '</p></section><section class="intake-layout intake-layout--rpg"><div class="rpg-window rpg-media-window"><div class="rpg-window__bar"><span>01</span><b>现场物证</b><small>CASE MEDIA</small></div><div class="upload rpg-upload">' + media + '</div><div class="rpg-inventory"><div class="rpg-inventory__status"><i class="' + (visit.region ? 'is-ready' : '') + '"></i><span>' + (visit.region ? '异常区域已标记' : '图片可拖动框选异常区域') + '</span></div><label class="rpg-slot rpg-slot--target"><input class="visually-hidden-file" id="targetInput" type="file" accept="image/png,image/jpeg">' + (targetPreview || '<span>＋</span><b>目标图</b>') + '</label></div></div><form id="intakeForm" class="rpg-window rpg-form"><div class="rpg-window__bar"><span>02</span><b>案件登记</b><small>CASE NOTES</small></div><div class="rpg-form__body"><div class="field"><label for="description">发生了什么？ <button type="button" class="voice-btn" data-action="voice">◉ 语音</button></label><textarea id="description" maxlength="500" placeholder="例如：跟着教程做到第三步，奶油突然变成颗粒了">' + esc(visit.description || '') + '</textarea></div><div class="field"><label for="target">你原本想做成什么？</label><input id="target" value="' + esc(visit.target || '') + '" placeholder="目标结果（建议填写）"></div><div class="field two-fields"><div><label for="sourceUrl">关联原教程</label><input id="sourceUrl" value="' + esc(visit.sourceUrl || '') + '" placeholder="教程链接或作品标识"></div><div><label for="sourceTime">翻车时间点</label><input id="sourceTime" value="' + esc(visit.sourceTime || '') + '" placeholder="00:36 / 第3步"></div></div><div class="field"><label for="constraints">现实约束</label><input id="constraints" value="' + esc(visit.constraints || '') + '" placeholder="时间、材料、预算、是否愿意重做…"></div><div class="truth-note">' + esc(analysisServiceNote()) + '</div><button class="btn primary full rpg-submit" type="submit">盖章并送往 AI 鉴定室</button></div></form></section>')
   }
 
   function regionStyle(region) {
     if (!region) return 'display:none'
     return 'display:block;left:' + region.x + '%;top:' + region.y + '%;width:' + region.width + '%;height:' + region.height + '%'
+  }
+
+  function fallbackArtifact(hallId) {
+    const hall = hallById(hallId) || platform.halls[0]
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" shape-rendering="crispEdges"><path fill="none" d="M0 0h128v128H0z"/><path fill="#3a2a1a" d="M30 94h68v10H30zM38 78h52v16H38zM46 38h36v40H46z"/><path fill="' + hall.color + '" d="M50 42h28v32H50z"/><path fill="#f2c85d" d="M58 50h12v12H58z"/><path fill="#fff5da" d="M61 53h6v6h-6z"/></svg>'
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
+  }
+  function startArtifactGeneration(force) {
+    const visit = state.visit, item = visit && visit.analysis
+    if (!item || (state.artifactStatus === 'generating' && !force) || (state.artifactStatus === 'ready' && !force)) return
+    const suggested = hallIdByName(item.hall) || state.suggestedHallId || (visit.entryHallId === 'main' ? '' : visit.entryHallId) || 'kitchen'
+    state.artifactStatus = 'generating'; state.artifactError = ''; state.artifact = { id: '', image: fallbackArtifact(suggested), model: '', fallback: true }
+    if (!apiBase() || visit.mode !== 'online') { state.artifactStatus = 'fallback'; return }
+    const payload = {
+      case_id: item.id || '',
+      analysis: { name: item.name, short_name: item.shortName, target: item.target, anomaly: item.anomaly, hall: item.hall, evidence: item.evidence || [] },
+      source_image: visit.mediaType === 'video' || String(visit.image).indexOf('data:image/') !== 0 ? '' : visit.image,
+      target_image: String(visit.targetImage || '').indexOf('data:image/') === 0 ? visit.targetImage : ''
+    }
+    fetch(apiBase() + '/api/v1/artifacts/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      .then(function (response) { return response.json().catch(function () { return {} }).then(function (data) { if (!response.ok) throw new Error(data.error && data.error.message ? data.error.message : '摆件生成服务返回 ' + response.status); return data }) })
+      .then(function (result) {
+        state.artifactStatus = 'ready'; state.artifactError = ''; state.artifact = { id: result.artifact_id, image: result.preview_data_url, model: result.model || '', fallback: false }
+        if (state.visit) state.visit.artifact = state.artifact
+        if (state.page === 'diagnosis') renderDiagnosis()
+      }).catch(function (error) {
+        state.artifactStatus = 'failed'; state.artifactError = error.message
+        if (state.page === 'diagnosis') renderDiagnosis()
+      })
   }
 
   function renderPending() {
@@ -151,6 +299,18 @@
     if (!state.visit) { go('intake', { replace: true }); return }
     if (state.visit.mode === 'pending') { renderPending(); return }
     const item = state.visit.analysis
+    const suggestedHallId = item.suggestedHallId || item.suggested_hall_id || hallIdByName(item.hall) || (state.visit.entryHallId === 'main' ? '' : state.visit.entryHallId) || 'kitchen'
+    const suggestedHall = hallById(suggestedHallId) || platform.halls[0]
+    state.suggestedHallId = suggestedHall.id
+    if (!state.finalHallId || !hallById(state.finalHallId)) state.finalHallId = suggestedHall.id
+    state.visit.finalHallId = state.finalHallId
+    const entryHall = state.visit.entryHallId === 'main' ? null : hallById(state.visit.entryHallId)
+    const conflict = entryHall && entryHall.id !== suggestedHall.id
+    const classificationButtons = platform.halls.map(function (hall) { return '<button type="button" class="hall-choice ' + (state.finalHallId === hall.id ? 'is-selected' : '') + '" data-select-hall="' + hall.id + '" aria-pressed="' + (state.finalHallId === hall.id ? 'true' : 'false') + '"><span>' + hall.icon + '</span><b>' + esc(hall.name) + '</b></button>' }).join('')
+    const classificationPanel = '<section class="card panel classification-panel"><div class="section-head mini"><div><div class="eyebrow">AI CLASSIFICATION</div><div class="section-title">确认归馆</div></div><span class="classification-confidence">推荐 · ' + esc(suggestedHall.name) + '</span></div>' + (conflict ? '<div class="warning">你从“' + esc(entryHall.name) + '”提交，但 AI 更推荐“' + esc(suggestedHall.name) + '”。请确认最终归馆。</div>' : '') + '<p class="classification-reason">' + esc(item.classificationReason || item.classification_reason || '根据目标对象、异常形态与处置知识边界综合推荐。') + '</p><div class="hall-choice-grid">' + classificationButtons + '</div><div class="classification-final">最终归馆：<b>' + esc((hallById(state.finalHallId) || suggestedHall).name) + '</b><span>归档前仍可修改一次，不会重复生成摆件。</span></div></section>'
+    const artifactImage = state.artifact && state.artifact.image ? state.artifact.image : fallbackArtifact(suggestedHall.id)
+    const artifactCopy = state.artifactStatus === 'generating' ? '<b>正在铸造像素摆件…</b><span>你可以继续阅读报告，生成不会阻塞鉴定。</span>' : state.artifactStatus === 'ready' ? '<b>像素摆件已完成</b><span>归档后将出现在最终分馆的展台上。</span>' : state.artifactStatus === 'failed' ? '<b>摆件生成失败</b><span>' + esc(state.artifactError) + '</span><button class="btn ghost" data-action="retry-artifact">重新生成</button>' : '<b>当前使用本地像素占位</b><span>配置图片生成模型后可生成案件专属摆件。</span>'
+    const artifactPanel = '<section class="card panel artifact-panel"><div class="artifact-preview"><img src="' + esc(artifactImage) + '" alt="案件像素摆件预览"><i class="artifact-shadow"></i></div><div><div class="eyebrow">PIXEL ARTIFACT</div><div class="section-title">展台摆件</div><div class="artifact-status artifact-status--' + esc(state.artifactStatus) + '">' + artifactCopy + '</div></div></section>'
     const fingerprint = [['目标对象', item.target], ['当前阶段', item.stage], ['异常形态', item.anomaly], ['异常区域', item.area], ['严重程度', item.severity], ['可逆程度', item.reversible]]
     const fps = fingerprint.map(function (row) { return '<div class="fp-row"><span>' + row[0] + '</span><strong>' + esc(row[1]) + '</strong></div>' }).join('')
     const hypotheses = (item.hypotheses || []).map(function (hyp, index) { return '<div class="hyp"><div class="hyp-top"><span>' + (index + 1) + '. ' + esc(hyp.name) + '</span><b>' + Number(hyp.probability || 0) + '%</b></div><div class="bar"><i style="width:' + Number(hyp.probability || 0) + '%"></i></div><small>支持证据：' + esc(hyp.evidence) + '</small></div>' }).join('')
@@ -167,7 +327,7 @@
     }).join('')
     const douyinPanel = state.visit.mode !== 'online' ? '' : '<section class="card panel"><div class="section-head mini"><div><div class="section-title">抖音参考作品</div><div class="caption">关键词检索：' + esc(state.douyinKeyword || item.shortName || '') + '</div></div></div>' + (state.douyinLoading ? '<div class="truth-note">正在检索真实抖音作品…</div>' : state.douyinError ? '<div class="warning">' + esc(state.douyinError) + '</div>' : douyinCards ? '<div class="douyin-grid">' + douyinCards + '</div><div class="truth-note">这些是关键词检索结果，不等同于视觉相似度排序或经过验证的抢救案例。</div>' : '<div class="truth-note">当前关键词没有返回可展示的真实作品。</div>') + '</section>'
     const exhibitMedia = state.visit.mediaType === 'video' ? '<video src="' + state.visit.image + '" controls playsinline style="width:100%;height:390px;object-fit:contain;display:block;background:#171512"></video>' : '<img src="' + state.visit.image + '" alt="' + esc(item.shortName || item.name) + '">'
-    app.innerHTML = shell(progress(1) + hallContextRibbon('AI 鉴定室 · 第 2 站') + '<section class="page-head"><div class="eyebrow">Appraisal Room · AI</div><h1 class="page-title" data-page-title tabindex="-1">失败鉴定报告</h1></section><section class="analysis-grid"><aside class="card exhibit sticky">' + exhibitMedia + '<div class="exhibit-info"><div class="case-meta"><span>' + esc(item.hall || '待分类') + '</span><span>' + (state.visit.mode === 'builtin' ? '馆藏案例' : '在线分析') + '</span></div><div class="exhibit-name">' + esc(item.name || item.shortName) + '</div></div></aside><div><section class="card panel"><div class="section-title">失败指纹</div>' + aiMeta + fps + detectionNote + (item.safety ? '<div class="warning">安全提示：' + esc(item.safety) + '</div>' : '') + '</section>' + mediaEvidencePanel + '<section class="card panel"><div class="section-title">原因假设</div>' + hypotheses + '</section><section class="card panel question"><div class="eyebrow">关键追问</div><div class="question-copy">' + esc(item.question) + '</div><div class="button-row"><button class="btn secondary" data-answer="yes">可以 / 是</button><button class="btn secondary" data-answer="no">不可以 / 否</button></div>' + (item.followUpResult ? '<div class="verify-result"><b>判断已更新</b><br>' + esc(item.followUpResult) + '</div>' : '') + '</section><section class="card panel"><div class="section-title">同款翻车</div><div class="tabs">' + ['长得最像', '经历最像', '最值得参考'].map(function (name, index) { return '<button class="tab ' + (state.matchTab === index ? 'active' : '') + '" data-tab="' + index + '">' + name + '</button>' }).join('') + '</div>' + matchHtml + '<div class="truth-note">只显示当前案例库或分析服务实际返回的结果，不展示虚构馆藏总数。</div></section>' + douyinPanel + '<button class="btn primary full" data-page="action">查看四条处置路线</button></div></section>')
+    app.innerHTML = shell(progress(1) + hallContextRibbon('AI 鉴定室 · 第 2 站') + '<section class="page-head"><div class="eyebrow">Appraisal Room · AI</div><h1 class="page-title" data-page-title tabindex="-1">失败鉴定报告</h1></section><section class="analysis-grid"><aside class="card exhibit sticky">' + exhibitMedia + '<div class="exhibit-info"><div class="case-meta"><span>' + esc(suggestedHall.name) + '</span><span>' + (state.visit.mode === 'builtin' ? '馆藏案例' : '在线分析') + '</span></div><div class="exhibit-name">' + esc(item.name || item.shortName) + '</div></div></aside><div><section class="card panel"><div class="section-title">失败指纹</div>' + aiMeta + fps + detectionNote + (item.safety ? '<div class="warning">安全提示：' + esc(item.safety) + '</div>' : '') + '</section>' + classificationPanel + artifactPanel + mediaEvidencePanel + '<section class="card panel"><div class="section-title">原因假设</div>' + hypotheses + '</section><section class="card panel question"><div class="eyebrow">关键追问</div><div class="question-copy">' + esc(item.question) + '</div><div class="button-row"><button class="btn secondary" data-answer="yes">可以 / 是</button><button class="btn secondary" data-answer="no">不可以 / 否</button></div>' + (item.followUpResult ? '<div class="verify-result"><b>判断已更新</b><br>' + esc(item.followUpResult) + '</div>' : '') + '</section><section class="card panel"><div class="section-title">同款翻车</div><div class="tabs">' + ['长得最像', '经历最像', '最值得参考'].map(function (name, index) { return '<button class="tab ' + (state.matchTab === index ? 'active' : '') + '" data-tab="' + index + '">' + name + '</button>' }).join('') + '</div>' + matchHtml + '<div class="truth-note">只显示当前案例库或分析服务实际返回的结果，不展示虚构馆藏总数。</div></section>' + douyinPanel + '<button class="btn primary full" data-page="action">查看四条处置路线</button></div></section>')
   }
 
   function renderAction() {
@@ -294,11 +454,41 @@
 
   function collections() { try { return JSON.parse(localStorage.getItem('museum_collections_web') || '[]') } catch (_) { return [] } }
   function renderCollection() {
-    const records = collections()
-    let body = hallContextRibbon('个人归档柜') + '<section class="page-head"><div class="eyebrow">My Archive</div><h1 class="page-title" data-page-title tabindex="-1">我的馆藏</h1><p class="lead">' + records.length + ' 件保存在当前浏览器中的展品。</p></section>'
+    const allRecords = collections(), records = state.collectionHallId ? allRecords.filter(function (record) { return (record.hallId || hallIdByName(record.hall)) === state.collectionHallId }) : allRecords
+    const filterNav = '<div class="hall-pills collection-filter"><button class="hall-pill ' + (!state.collectionHallId ? 'active' : '') + '" data-collection-hall="">全部</button>' + platform.halls.map(function (hall) { return '<button class="hall-pill ' + (state.collectionHallId === hall.id ? 'active' : '') + '" data-collection-hall="' + hall.id + '">' + hall.icon + ' ' + esc(hall.name) + '</button>' }).join('') + '</div>'
+    let body = hallContextRibbon('个人归档柜') + '<section class="page-head"><div class="eyebrow">MY PRIVATE ARCHIVE</div><h1 class="page-title" data-page-title tabindex="-1">我的馆藏</h1><p class="lead">共 ' + allRecords.length + ' 件私人展品；只有主动发布后才会进入社区。</p></section>' + filterNav
     if (!records.length) body += '<section class="card empty"><div class="empty-icon">□</div><div class="section-title">展柜还是空的</div><p class="lead" style="margin:12px auto 28px">完成一次处置流程后，展品会保存在本地。</p><button class="btn primary" data-page="intake">收下第一件翻车</button></section>'
-    else body += '<section class="archive-grid">' + records.map(function (record) { return '<article class="card archive"><img src="' + record.image + '" alt="' + esc(record.name) + '"><div class="archive-body"><div class="case-meta"><span>' + esc(record.hall) + '</span><span>' + esc(record.createdAt) + '</span></div><div class="case-name">' + esc(record.name) + '</div><p>处理路线 · ' + esc(record.routeName) + '</p><span class="status">' + (record.verified ? '已通过在线视觉复核' : '用户完成步骤，未在线复核') + '</span><div style="margin-top:16px"><button class="btn ghost" data-delete="' + record.recordId + '">移出馆藏</button></div></div></article>' }).join('') + '</section><div style="margin-top:22px"><button class="btn primary" data-page="intake">继续入馆</button></div>'
-    app.innerHTML = shell(body)
+    else body += '<section class="archive-grid">' + records.map(function (record) { return '<article class="card archive archive--artifact"><button class="archive-artifact" data-view-archive="' + esc(record.recordId) + '"><img src="' + esc(exhibitImage(record)) + '" alt="' + esc(record.name) + '像素摆件"><span>查看展品档案</span></button><img class="archive-source" src="' + esc(record.image) + '" alt="原始现场"><div class="archive-body"><div class="case-meta"><span>' + esc(record.hall) + '</span><span>' + esc(record.createdAt) + '</span></div><div class="case-name">' + esc(record.name) + '</div><p>处理路线 · ' + esc(record.routeName || '待选择') + '</p><span class="status">私人馆藏 · ' + (record.published ? '已主动发布' : '未发布') + '</span><div style="margin-top:16px"><button class="btn ghost" data-delete="' + record.recordId + '">移出馆藏</button></div></div></article>' }).join('') + '</section><div style="margin-top:22px"><button class="btn primary" data-page="intake">继续入馆</button></div>'
+    app.innerHTML = shell(body + exhibitDialog())
+  }
+
+  function cloudState() { return window.MuseumCloud ? window.MuseumCloud.getState() : { status: 'unavailable', configured: false, error: '云端适配层未加载' } }
+  function mergeCloudRecords(remoteRecords) {
+    const local = collections(), byId = {}
+    local.forEach(function (record) { byId[record.recordId] = record })
+    ;(remoteRecords || []).forEach(function (remote) {
+      const existing = byId[remote.recordId] || {}
+      byId[remote.recordId] = Object.assign({}, existing, remote, { image: remote.image || existing.image || '', artifactImage: remote.artifactImage || existing.artifactImage || '' })
+    })
+    const merged = Object.keys(byId).map(function (key) { return byId[key] }).sort(function (a, b) { return String(b.createdAt || '').localeCompare(String(a.createdAt || '')) })
+    const backupKey = 'museum_collections_web_backup_' + new Date().toISOString().replace(/[:.]/g, '-')
+    localStorage.setItem(backupKey, JSON.stringify(local))
+    localStorage.setItem('museum_collections_web', JSON.stringify(merged))
+    return { count: merged.length, backupKey: backupKey }
+  }
+  function renderAccount() {
+    const cloud = cloudState(), count = collections().length
+    let panel = ''
+    if (!cloud.configured) {
+      panel = '<section class="cloud-card cloud-card--offline"><div class="cloud-orb">⌁</div><div><div class="eyebrow">CLOUD WORKSPACE</div><div class="section-title">云端工作区尚未配置</div><p>本地功能不受影响。创建火山引擎 Supabase 工作区后，在启动环境中配置公开客户端地址和匿名 Key，再执行仓库中的迁移脚本。</p><div class="cloud-code"><code>SUPABASE_URL</code><code>SUPABASE_ANON_KEY</code><code>supabase/migrations/202607250001_initial.sql</code></div><div class="truth-note">SMTP 密码和 SERVICE_ROLE_KEY 只在火山控制台或服务端配置，不能进入浏览器、对话或 Git。</div></div></section>'
+    } else if (!cloud.user) {
+      const otp = cloud.otpSent ? '<form id="cloudVerifyForm" class="cloud-auth-form"><label for="cloudOtp">六位验证码</label><input id="cloudOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required placeholder="000000"><button class="btn primary" type="submit">验证并登录</button><p class="caption">验证码已发送至 ' + esc(cloud.email) + '。若未收到，请检查 SMTP 与邮件模板是否使用 Token 变量。</p></form>' : '<form id="cloudOtpForm" class="cloud-auth-form"><label for="cloudEmail">邮箱地址</label><input id="cloudEmail" type="email" autocomplete="email" required placeholder="name@example.com"><button class="btn primary" type="submit">发送六位验证码</button><p class="caption">首次验证会自动创建个人博物馆账号。</p></form>'
+      panel = '<section class="cloud-card"><div class="cloud-orb">@</div><div><div class="eyebrow">EMAIL OTP</div><div class="section-title">登录云端博物馆</div><p>使用邮箱一次性验证码登录，不设置密码。登录后才会读取或上传私人馆藏。</p>' + otp + '</div></section>'
+    } else {
+      panel = '<section class="cloud-card cloud-card--signed"><div class="cloud-orb">✓</div><div><div class="eyebrow">SIGNED IN</div><div class="section-title">' + esc(cloud.user.email || '已登录账号') + '</div><p>本地有 <b>' + count + '</b> 件馆藏。首次同步会按记录 ID 和内容哈希去重，原本地数据在成功合并前会保留备份。</p><div class="cloud-actions"><button class="btn primary" data-action="cloud-sync" ' + (cloud.syncing ? 'disabled' : '') + '>上传并同步本地馆藏</button><button class="btn secondary" data-action="cloud-pull" ' + (cloud.syncing ? 'disabled' : '') + '>读取云端并合并</button><button class="btn ghost" data-action="cloud-signout">仅退出当前设备</button></div>' + (cloud.progress ? '<div class="cloud-progress">' + esc(cloud.progress) + '</div>' : '') + (cloud.lastSyncedAt ? '<p class="caption">最近同步：' + esc(cloud.lastSyncedAt) + '</p>' : '') + '</div></section>'
+    }
+    const error = cloud.error ? '<div class="warning cloud-error">' + esc(cloud.error) + '</div>' : ''
+    app.innerHTML = shell('<section class="page-head"><div class="eyebrow">VOLCENGINE SUPABASE</div><h1 class="page-title" data-page-title tabindex="-1">账号与云端同步</h1><p class="lead">默认私人、用户主动同步；只有显式发布的展品才会进入社区公开数据。</p></section>' + error + panel + '<section class="cloud-security-grid"><article class="card panel"><div class="eyebrow">PRIVATE BY DEFAULT</div><h3>私人存储</h3><p>案件媒体和摆件位于私有 Bucket，通过短期签名地址访问。</p></article><article class="card panel"><div class="eyebrow">ROW LEVEL SECURITY</div><h3>账号隔离</h3><p>案件、摆件和收藏均以当前用户 ID 执行行级权限策略。</p></article><article class="card panel"><div class="eyebrow">RECOVERABLE IMPORT</div><h3>可恢复迁移</h3><p>云端合并前保存本地备份；网络失败不会删除浏览器中的原馆藏。</p></article></section>')
   }
 
   let hallDoorTimer = null
@@ -309,11 +499,11 @@
   function parseRoute(value) {
     const raw = String(value || '').replace(/^#/, '').replace(/^\//, '') || 'home'
     const parts = raw.split('/').filter(Boolean), root = parts[0], hallId = parts[1] || ''
-    const hall = hallById(hallId)
-    if (root === 'hall' && hall && hall.theme && hall.status === 'open') return { page: 'hall', hallId: hall.id, canonical: 'hall/' + hall.id }
+    const hall = hallById(hallId), venue = venueById(hallId)
+    if (root === 'hall' && venue && (venue.world || venue.theme) && venue.status === 'open') return { page: 'hall', hallId: venue.id, canonical: 'hall/' + venue.id }
     if (root === 'halls' && hall) return { page: 'halls', hallId: hall.id, canonical: 'halls/' + hall.id }
     if (root === 'halls' && !hallId) return { page: 'halls', hallId: '', canonical: 'halls' }
-    if (['home', 'intake', 'diagnosis', 'action', 'coach', 'finish', 'result', 'community', 'curator', 'collection'].indexOf(root) >= 0 && parts.length === 1) return { page: root, hallId: '', canonical: root }
+    if (['home', 'intake', 'diagnosis', 'action', 'coach', 'finish', 'result', 'community', 'curator', 'collection', 'account'].indexOf(root) >= 0 && parts.length === 1) return { page: root, hallId: '', canonical: root }
     return { page: 'home', hallId: '', canonical: 'home', invalid: true }
   }
   function applyRoute(route) {
@@ -324,6 +514,7 @@
   }
 
   function render() {
+    if (window.MuseumWorld) window.MuseumWorld.destroy()
     applyDocumentTheme()
     window.scrollTo({ top: 0, behavior: 'instant' })
     if (state.page === 'home') renderHome()
@@ -338,6 +529,7 @@
     else if (state.page === 'community') renderCommunity()
     else if (state.page === 'curator') renderCurator()
     else if (state.page === 'collection') renderCollection()
+    else if (state.page === 'account') renderAccount()
     else renderHome()
     if (state.focusPageTitle) {
       const heading = app.querySelector('[data-page-title], h1')
@@ -521,8 +713,14 @@
   function publishResult() {
     const item = state.visit.analysis, confirmed = confirm('你是否确认这次抢救或改造已经达到可接受结果？\n“取消”仍可发布，但会进入今日新展而不是抢救成功区。')
     const posts = userPosts()
-    posts.unshift({ id: 'result-' + Date.now(), sourceCaseId: item.id || '', title: item.name || item.shortName, content: '完成了“' + routesMeta[state.selectedRoute].name + '”路线：' + item.routes[state.selectedRoute].summary, hall: item.hall || '待分类展馆', image: state.visit.image, section: confirmed ? 'rescued' : 'new', fingerprint: item.shortName || item.anomaly, author: '本地用户', comments: [], createdAt: new Date().toLocaleString('zh-CN') })
-    try { saveUserPosts(posts); state.communityTab = confirmed ? 'rescued' : 'new'; go('community'); toast('已发布到博物馆社区') } catch (_) { toast('本地空间不足，发布失败') }
+    const finalHall = hallById(state.finalHallId) || hallById(resolveHallIdFromVisit(state.visit))
+    posts.unshift({ id: 'result-' + Date.now(), sourceCaseId: item.id || '', title: item.name || item.shortName, content: '完成了“' + routesMeta[state.selectedRoute].name + '”路线：' + item.routes[state.selectedRoute].summary, hall: finalHall ? finalHall.name : item.hall || '待分类展馆', image: state.visit.image, section: confirmed ? 'rescued' : 'new', fingerprint: item.shortName || item.anomaly, author: '本地用户', comments: [], createdAt: new Date().toLocaleString('zh-CN') })
+    try {
+      saveUserPosts(posts)
+      const records = collections(), archived = records.filter(function (record) { return record.caseId && record.caseId === item.id })[0]
+      if (archived) { archived.published = true; localStorage.setItem('museum_collections_web', JSON.stringify(records)) }
+      state.communityTab = confirmed ? 'rescued' : 'new'; go('community'); toast('已主动发布到博物馆社区')
+    } catch (_) { toast('本地空间不足，发布失败') }
   }
 
   function generatePoster() {
@@ -551,6 +749,7 @@
   function resetVisit(hallId) {
     state.visit = null; state.entryHallId = hallId || ''; state.selectedRoute = ''; state.currentStep = 0
     state.collectionHallId = ''; state.checkImage = ''; state.verifyResult = null; state.videoJob = null
+    state.suggestedHallId = ''; state.finalHallId = ''; state.artifactStatus = 'idle'; state.artifact = null; state.artifactError = ''
   }
   function startHallEntrance(hallId, button) {
     if (state.enteringHall) return
@@ -565,6 +764,30 @@
   }
 
   app.addEventListener('click', function (event) {
+    const worldCommand = event.target.closest('[data-world-command]')
+    if (worldCommand) {
+      const command = worldCommand.dataset.worldCommand
+      if (command === 'toggle-menu') {
+        const hud = worldCommand.closest('.game-hud')
+        if (hud) hud.classList.toggle('is-menu-open')
+      }
+      if (command === 'directory') {
+        const dialog = document.querySelector('[data-world-directory]')
+        if (dialog) { dialog.hidden = false; const close = dialog.querySelector('button'); if (close) close.focus() }
+      }
+      if (command === 'close-dialog') {
+        const dialog = worldCommand.closest('.game-dialog')
+        if (dialog) dialog.hidden = true
+      }
+      if (command === 'submit-case') {
+        resetVisit(worldCommand.dataset.hallId); go('intake')
+      }
+      if (command === 'browse-collection') {
+        if (worldCommand.dataset.hallId === 'main') go('collection')
+        else go('halls/' + worldCommand.dataset.hallId)
+      }
+      return
+    }
     const pageButton = event.target.closest('[data-page]')
     if (pageButton) {
       if (pageButton.dataset.communityTab) state.communityTab = pageButton.dataset.communityTab
@@ -587,9 +810,17 @@
       const hallId = platform.hallByCase[item.id] || ''
       state.entryHallId = hallId
       state.visit = { mode: 'builtin', caseId: item.id, entryHallId: hallId, image: '..' + item.image, description: item.shortName, target: item.target, constraints: '', analysis: JSON.parse(JSON.stringify(item)) }
-      state.selectedRoute = ''; state.currentStep = 0; state.checkImage = ''; state.verifyResult = null; state.videoJob = null
+      state.selectedRoute = ''; state.currentStep = 0; state.checkImage = ''; state.verifyResult = null; state.videoJob = null; state.suggestedHallId = hallId; state.finalHallId = hallId; state.artifactStatus = 'idle'; state.artifact = null; state.artifactError = ''
       go('intake'); return
     }
+    const hallChoice = event.target.closest('[data-select-hall]')
+    if (hallChoice) { state.finalHallId = hallChoice.dataset.selectHall; if (state.visit) state.visit.finalHallId = state.finalHallId; renderDiagnosis(); return }
+    const exhibitButton = event.target.closest('[data-view-exhibit]')
+    if (exhibitButton) { openExhibitDialog(exhibitButton.dataset.viewExhibit); return }
+    const archiveButton = event.target.closest('[data-view-archive]')
+    if (archiveButton) { openExhibitDialog(archiveButton.dataset.viewArchive); return }
+    const collectionHall = event.target.closest('[data-collection-hall]')
+    if (collectionHall) { state.collectionHallId = collectionHall.dataset.collectionHall; renderCollection(); return }
     const scroller = event.target.closest('[data-scroll]')
     if (scroller) { document.getElementById(scroller.dataset.scroll).scrollIntoView({ behavior: 'smooth' }); return }
     const tab = event.target.closest('[data-tab]')
@@ -620,6 +851,7 @@
     if (event.target.id === 'videoTemplate') { state.videoTemplate = event.target.value; state.videoJob = null; renderResult(); return }
     if (event.target.id === 'imageInput' && event.target.files[0]) {
       const file = event.target.files[0], entryHallId = activeHallId() || state.entryHallId || ''
+      state.suggestedHallId = ''; state.finalHallId = ''; state.artifactStatus = 'idle'; state.artifact = null; state.artifactError = ''
       if (file.type.indexOf('video/') === 0) {
         state.visit = { mode: 'local', entryHallId: entryHallId, image: URL.createObjectURL(file), rawFile: file, mediaType: 'video', description: '', target: '', constraints: '' }
         state.selectedRoute = ''; state.currentStep = 0; state.checkImage = ''; state.verifyResult = null; state.videoJob = null; renderIntake()
@@ -634,6 +866,16 @@
 
   app.addEventListener('submit', function (event) {
     event.preventDefault()
+    if (event.target.id === 'cloudOtpForm') {
+      const button = event.target.querySelector('button'); button.disabled = true
+      window.MuseumCloud.sendOtp(document.getElementById('cloudEmail').value).then(function () { toast('验证码已发送'); renderAccount() }).catch(function (error) { toast(error.message); renderAccount() })
+      return
+    }
+    if (event.target.id === 'cloudVerifyForm') {
+      const button = event.target.querySelector('button'); button.disabled = true
+      window.MuseumCloud.verifyOtp(document.getElementById('cloudOtp').value).then(function () { toast('登录成功'); renderAccount() }).catch(function (error) { toast(error.message); renderAccount() })
+      return
+    }
     if (event.target.id === 'hallSearch') { state.hallQuery = document.getElementById('hallQuery').value.trim(); renderHalls(); return }
     if (event.target.id === 'communityForm') { submitCommunityPost(); return }
     if (event.target.id === 'curatorApply') { submitCuratorApply(); return }
@@ -643,10 +885,10 @@
     if (!state.visit || !state.visit.image) { toast('请先选择一张翻车现场图片'); return }
     const form = { description: document.getElementById('description').value.trim(), target: document.getElementById('target').value.trim(), constraints: document.getElementById('constraints').value.trim(), sourceUrl: document.getElementById('sourceUrl').value.trim(), sourceTime: document.getElementById('sourceTime').value.trim() }
     Object.assign(state.visit, form)
-    if (state.visit.mode === 'builtin') { go('diagnosis'); return }
+    if (state.visit.mode === 'builtin') { startArtifactGeneration(); go('diagnosis'); return }
     if (!apiBase()) { state.visit.mode = 'pending'; go('diagnosis'); return }
     const button = event.target.querySelector('button[type=submit]'); button.disabled = true; button.innerHTML = '<i class="loader"></i> 正在分析真实图片…'
-    analyzeOnline(form).then(function (analysis) { state.visit.mode = 'online'; state.visit.analysis = analysis; state.douyinResults = []; state.douyinError = ''; state.douyinKeyword = ''; go('diagnosis'); searchDouyin(analysis) }).catch(function (error) { toast(error.message === 'NO_API' ? '尚未配置分析服务' : error.message); button.disabled = false; button.textContent = '送往 AI 鉴定室' })
+    analyzeOnline(form).then(function (analysis) { state.visit.mode = 'online'; state.visit.analysis = analysis; state.douyinResults = []; state.douyinError = ''; state.douyinKeyword = ''; startArtifactGeneration(); go('diagnosis'); searchDouyin(analysis) }).catch(function (error) { toast(error.message === 'NO_API' ? '尚未配置分析服务' : error.message); button.disabled = false; button.textContent = '盖章并送往 AI 鉴定室' })
   })
 
   function handleAction(action) {
@@ -672,7 +914,8 @@
     }
     if (action === 'archive') {
       const item = state.visit.analysis, now = new Date(), records = collections()
-      records.unshift({ recordId: 'web-' + Date.now(), caseId: item.id || '', name: item.name || item.shortName || '未命名展品', hall: item.hall || '待分类展馆', image: state.visit.image, routeName: routesMeta[state.selectedRoute].name, verified: Boolean(state.verifyResult && !state.verifyResult.offline), createdAt: now.toLocaleDateString('zh-CN') })
+      const suggested = hallById(state.suggestedHallId) || hallById(hallIdByName(item.hall)), finalHall = hallById(state.finalHallId) || suggested || platform.halls[0]
+      records.unshift({ recordId: 'web-' + Date.now(), caseId: item.id || '', name: item.name || item.shortName || '未命名展品', hallId: finalHall.id, hall: finalHall.name, suggestedHallId: suggested ? suggested.id : '', suggestedHallName: suggested ? suggested.name : item.hall, classificationReason: item.classificationReason || item.classification_reason || '', image: state.visit.image, artifactId: state.artifact && state.artifact.id || '', artifactImage: state.artifact && state.artifact.image || fallbackArtifact(finalHall.id), artifactModel: state.artifact && state.artifact.model || '', anomaly: item.anomaly || '', analysis: item, routeName: routesMeta[state.selectedRoute] ? routesMeta[state.selectedRoute].name : '待选择', verified: Boolean(state.verifyResult && !state.verifyResult.offline), published: false, createdAt: now.toLocaleDateString('zh-CN') })
       try { localStorage.setItem('museum_collections_web', JSON.stringify(records.slice(0, 20))); state.currentStep = 0; state.checkImage = ''; go('collection', { collectionHallId: resolveHallIdFromVisit(state.visit) }); toast('已收入本地馆藏') } catch (_) { toast('图片较大，本地存储空间不足') }
     }
     if (action === 'publish-result') publishResult()
@@ -684,6 +927,14 @@
     }
     if (action === 'save-course') { addToList('museum_course_list', (platform.serviceCatalog[resolveHallIdFromVisit(state.visit)] || {}).course || '待补课程'); toast('已保存到学习清单') }
     if (action === 'voice') startVoiceInput()
+    if (action === 'retry-artifact') startArtifactGeneration(true)
+    if (action === 'cloud-sync') {
+      window.MuseumCloud.syncLocal(collections()).then(function (result) { toast('已同步 ' + result.count + ' 件馆藏'); renderAccount() }).catch(function (error) { toast(error.message); renderAccount() })
+    }
+    if (action === 'cloud-pull') {
+      window.MuseumCloud.pullCloud().then(function (records) { const merged = mergeCloudRecords(records); toast('云端馆藏已合并，本地备份已保留'); renderAccount(); console.info('Museum local backup:', merged.backupKey) }).catch(function (error) { toast(error.message); renderAccount() })
+    }
+    if (action === 'cloud-signout') window.MuseumCloud.signOut().then(function () { toast('已退出当前设备'); renderAccount() }).catch(function (error) { toast(error.message) })
   }
 
   function startVoiceInput() {
@@ -734,6 +985,12 @@
     if (route.invalid) history.replaceState({ page: 'home' }, '', '#home')
     render()
   })
+  window.addEventListener('keydown', function (event) {
+    if (event.key !== 'Escape') return
+    const dialog = document.querySelector('.game-dialog:not([hidden])')
+    if (dialog) dialog.hidden = true
+  })
+  window.addEventListener('museum:cloud-state', function () { if (state.page === 'account') renderAccount() })
   const initialRoute = parseRoute(location.hash)
   const previewParams = new URLSearchParams(location.search)
   if (['archive', 'report', 'content', 'service'].indexOf(previewParams.get('tab')) >= 0) state.resultTab = previewParams.get('tab')

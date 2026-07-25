@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import base64
 import cgi
+import io
 import json
 import math
 import mimetypes
@@ -36,13 +37,17 @@ HOST = os.getenv("MUSEUM_HOST", "127.0.0.1")
 PORT = int(os.getenv("MUSEUM_PORT", "5173"))
 ARK_BASE_URL = os.getenv("ARK_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3").rstrip("/")
 ARK_MODEL = os.getenv("ARK_MODEL", "doubao-seed-2-0-lite-260428")
+ARK_IMAGE_MODEL = os.getenv("ARK_IMAGE_MODEL", "doubao-seedream-5-0-pro-260628")
 ARK_EXPLICIT_AUDIO = os.getenv("ARK_EXPLICIT_AUDIO", "").strip().lower() in {"1", "true", "yes"}
 REDFOX_BASE_URL = os.getenv("REDFOX_BASE_URL", "https://redfox.hk").rstrip("/")
+SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("SUPABASE_BASE_URL", "")).rstrip("/")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "").strip()
 MAX_UPLOAD_BYTES = int(os.getenv("MUSEUM_MAX_UPLOAD_MB", "50")) * 1024 * 1024
 ANALYSES: dict[str, dict[str, Any]] = {}
 REDFOX_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
 REDFOX_CACHE_SECONDS = int(os.getenv("REDFOX_CACHE_SECONDS", "600"))
-VIDEO_JOBS = VideoJobManager(ROOT / "runtime" / "video_jobs")
+RUNTIME_ROOT = Path(os.getenv("MUSEUM_RUNTIME_DIR", str(ROOT / "runtime"))).resolve()
+VIDEO_JOBS = VideoJobManager(RUNTIME_ROOT / "video_jobs")
 
 
 class ApiError(Exception):
@@ -101,6 +106,112 @@ def ark_request(payload: dict[str, Any], timeout: int = 180) -> dict[str, Any]:
         raise ApiError(502, provider_code, message, provider_message) from error
     except urllib.error.URLError as error:
         raise ApiError(502, "ARK_NETWORK_ERROR", "无法连接火山方舟服务", str(error.reason)) from error
+
+
+def ark_image_request(payload: dict[str, Any], timeout: int = 240) -> dict[str, Any]:
+    request = urllib.request.Request(
+        f"{ARK_BASE_URL}/images/generations",
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={"Authorization": f"Bearer {api_key()}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return json.load(response)
+    except urllib.error.HTTPError as error:
+        raw = error.read().decode("utf-8", errors="replace")
+        provider_code, provider_message = "ARK_IMAGE_HTTP_ERROR", raw[:800]
+        try:
+            parsed = json.loads(raw).get("error", {})
+            provider_code = parsed.get("code", provider_code)
+            provider_message = parsed.get("message", provider_message)
+        except json.JSONDecodeError:
+            pass
+        if provider_code in {"ModelNotOpen", "InvalidEndpointOrModel.NotFound"}:
+            message = f"方舟图片模型 {ARK_IMAGE_MODEL} 尚未开通或模型 ID 不可用"
+        elif error.code in {401, 403}:
+            message = "方舟 API Key 无效、已失效或没有图片生成权限"
+        else:
+            message = "方舟像素摆件生成失败"
+        raise ApiError(502, provider_code, message, provider_message) from error
+    except urllib.error.URLError as error:
+        raise ApiError(502, "ARK_IMAGE_NETWORK_ERROR", "无法连接火山方舟图片生成服务", str(error.reason)) from error
+
+
+def transparent_artifact(source: bytes) -> bytes:
+    """Remove a flat border color and normalize the generated object to 128px."""
+    try:
+        from PIL import Image
+    except ImportError as error:
+        raise ApiError(503, "PILLOW_REQUIRED", "摆件去底需要 Pillow，请先执行 pip install pillow") from error
+    try:
+        image = Image.open(io.BytesIO(source)).convert("RGBA")
+    except Exception as error:
+        raise ApiError(502, "INVALID_ARTIFACT_IMAGE", "图片模型返回了无法解析的图片", str(error)) from error
+    corners = [image.getpixel((0, 0))[:3], image.getpixel((image.width - 1, 0))[:3], image.getpixel((0, image.height - 1))[:3], image.getpixel((image.width - 1, image.height - 1))[:3]]
+    key = tuple(sorted(value[channel] for value in corners)[len(corners) // 2] for channel in range(3))
+    pixels = image.load()
+    for y in range(image.height):
+        for x in range(image.width):
+            red, green, blue, alpha = pixels[x, y]
+            delta = math.sqrt((red - key[0]) ** 2 + (green - key[1]) ** 2 + (blue - key[2]) ** 2)
+            if delta <= 24:
+                pixels[x, y] = (red, green, blue, 0)
+            elif delta < 72:
+                pixels[x, y] = (red, green, blue, min(alpha, round((delta - 24) / 48 * 255)))
+    bbox = image.getchannel("A").getbbox()
+    if not bbox:
+        raise ApiError(502, "EMPTY_ARTIFACT_IMAGE", "摆件去底后没有保留有效主体")
+    subject = image.crop(bbox)
+    scale = min(104 / subject.width, 104 / subject.height)
+    subject = subject.resize((max(1, round(subject.width * scale)), max(1, round(subject.height * scale))), Image.Resampling.NEAREST)
+    output = Image.new("RGBA", (128, 128), (0, 0, 0, 0))
+    output.alpha_composite(subject, ((128 - subject.width) // 2, 112 - subject.height))
+    stream = io.BytesIO()
+    output.save(stream, "PNG", optimize=True)
+    return stream.getvalue()
+
+
+def generate_artifact(body: dict[str, Any]) -> dict[str, Any]:
+    analysis = body.get("analysis")
+    if not isinstance(analysis, dict):
+        raise ApiError(400, "ANALYSIS_REQUIRED", "摆件生成需要 analysis 对象")
+    source_image = str(body.get("source_image", ""))
+    if source_image and not source_image.startswith("data:image/"):
+        raise ApiError(400, "INVALID_SOURCE_IMAGE", "source_image 必须是图片 data URL")
+    name = str(analysis.get("name") or analysis.get("short_name") or "未命名翻车现场")[:80]
+    target = str(analysis.get("target") or "目标状态待确认")[:160]
+    anomaly = str(analysis.get("anomaly") or "异常形态待确认")[:160]
+    hall = str(analysis.get("hall") or "待分类展馆")[:40]
+    prompt = f"""
+Create one small collectible museum artifact representing this failed-case diagnosis: {name}.
+Target state: {target}. Visible anomaly: {anomaly}. Suggested gallery: {hall}.
+Render a single clever, recognizable object metaphor in cozy high-detail 16-bit pixel art, front three-quarter view, centered, crisp pixel clusters, limited warm palette, suitable for a 128x128 game pedestal.
+Place it on a perfectly flat solid #00ff00 chroma-key background. The background must be uniform with no floor, gradient, texture, shadow, reflection, text, logo, border, character, or watermark. Do not use #00ff00 in the object. Keep generous padding around the object.
+""".strip()
+    payload: dict[str, Any] = {"model": ARK_IMAGE_MODEL, "prompt": prompt, "size": "1024x1024", "response_format": "b64_json", "watermark": False}
+    if source_image:
+        payload["image"] = source_image
+    response = ark_image_request(payload)
+    data = response.get("data")
+    if not isinstance(data, list) or not data or not isinstance(data[0], dict):
+        raise ApiError(502, "ARK_IMAGE_EMPTY_OUTPUT", "图片模型没有返回摆件图片")
+    item = data[0]
+    if item.get("b64_json"):
+        try:
+            raw = base64.b64decode(item["b64_json"], validate=True)
+        except Exception as error:
+            raise ApiError(502, "ARK_IMAGE_INVALID_BASE64", "图片模型返回的图片编码无效", str(error)) from error
+    elif item.get("url"):
+        try:
+            with urllib.request.urlopen(str(item["url"]), timeout=120) as remote:
+                raw = remote.read(12 * 1024 * 1024)
+        except urllib.error.URLError as error:
+            raise ApiError(502, "ARK_IMAGE_DOWNLOAD_ERROR", "无法下载图片模型生成结果", str(error.reason)) from error
+    else:
+        raise ApiError(502, "ARK_IMAGE_EMPTY_OUTPUT", "图片模型没有返回可用的 URL 或 base64")
+    artifact = transparent_artifact(raw)
+    return {"artifact_id": "artifact-" + uuid.uuid4().hex[:16], "status": "ready", "preview_data_url": data_url(artifact, "image/png"), "model": ARK_IMAGE_MODEL, "prompt_version": "pixel-artifact-v1"}
 
 
 def output_text(response: dict[str, Any]) -> str:
@@ -195,6 +306,7 @@ def canonical_analysis(raw: dict[str, Any]) -> dict[str, Any]:
         "routes": ["action_routes", "actionRoutes", "处置路线"],
         "failureDetected": ["failure_detected", "is_failure", "isFailure"],
         "analysisConfidence": ["analysis_confidence", "confidence", "置信度"],
+        "classificationReason": ["classification_reason", "hall_reason", "hallReason", "归馆理由"],
     }
     for canonical, variants in aliases.items():
         if merged.get(canonical) not in (None, "", [], {}):
@@ -347,6 +459,11 @@ def normalize_analysis(raw: dict[str, Any], case_id: str | None = None) -> dict[
         "routes": routes,
         "failureDetected": failure_detected,
         "analysisConfidence": analysis_confidence,
+        "suggestedHallId": {
+            "厨房事故馆": "kitchen", "变美事故馆": "beauty", "手作事故馆": "craft",
+            "家居改造馆": "home", "植物急救馆": "plant", "拍摄翻车馆": "camera",
+        }.get(raw["hall"].strip(), ""),
+        "classificationReason": str(raw.get("classificationReason", "根据目标对象、异常形态与处置知识边界综合推荐。")).strip(),
         "analysisMeta": {"provider": "volcengine-ark", "model": ARK_MODEL, "realModelOutput": True, "schemaWarnings": schema_warnings},
     }
     return result
@@ -394,6 +511,7 @@ JSON 字段必须为：
     "visualSummary":"与失败判断有关的可见现象"
   }},
   "hall":"六馆之一：厨房事故馆/变美事故馆/手作事故馆/家居改造馆/植物急救馆/拍摄翻车馆",
+  "classificationReason":"用一句话说明为什么推荐这个馆，只引用目标对象、异常形态或所需知识边界",
   "name":"有梗但不冒犯的展品名",
   "shortName":"简短异常名",
   "target":"目标对象和目标状态",
@@ -759,11 +877,16 @@ class MuseumHandler(BaseHTTPRequestHandler):
                     "arkConfigured": bool(os.getenv("ARK_API_KEY", "").strip()),
                     "redfoxConfigured": bool(os.getenv("REDFOX_API_KEY", "").strip()),
                     "model": ARK_MODEL,
+                    "imageModel": ARK_IMAGE_MODEL,
                     "provider": "volcengine-ark",
                     "ffmpegAvailable": VIDEO_JOBS.available,
                     "videoTemplates": [{"id": key, **value} for key, value in VIDEO_TEMPLATES.items()],
                 },
             )
+            return
+        if path == "/api/v1/cloud-config":
+            configured = bool(SUPABASE_URL and SUPABASE_ANON_KEY)
+            self.send_json(200, {"configured": configured, "url": SUPABASE_URL if configured else "", "anonKey": SUPABASE_ANON_KEY if configured else "", "provider": "volcengine-supabase"})
             return
         video_job_match = re.fullmatch(r"/api/v1/video-jobs/(video-[a-f0-9]{16})", path)
         if video_job_match:
@@ -862,6 +985,15 @@ class MuseumHandler(BaseHTTPRequestHandler):
                 raw = self.rfile.read(length)
                 body = json.loads(raw.decode("utf-8")) if raw else {}
                 self.send_json(200, redfox_search(body))
+                return
+            if path == "/api/v1/artifacts/generate":
+                if "application/json" not in self.headers.get("Content-Type", ""):
+                    raise ApiError(400, "JSON_REQUIRED", "摆件生成接口需要 application/json")
+                raw = self.rfile.read(length)
+                body = json.loads(raw.decode("utf-8")) if raw else {}
+                if not isinstance(body, dict):
+                    raise ApiError(400, "INVALID_JSON", "请求必须是 JSON 对象")
+                self.send_json(200, generate_artifact(body))
                 return
             if path == "/api/v1/cases/analyze":
                 if "multipart/form-data" not in self.headers.get("Content-Type", ""):
